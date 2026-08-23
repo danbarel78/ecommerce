@@ -1,0 +1,22 @@
+# Reusable steps: lint, type-check, and test with coverage.
+steps:
+  - script: uv run ruff check src tests
+    displayName: "Ruff lint"
+
+  - script: uv run ruff format --check src tests
+    displayName: "Ruff format check"
+
+  - script: uv run mypy src
+    displayName: "Mypy (strict)"
+
+  - script: uv run pyright src
+    displayName: "Pyright (strict)"
+
+  - script: uv run pytest --cov=product_service --cov-report=xml --cov-fail-under=80
+    displayName: "Pytest + coverage (>=80%)"
+
+  - task: PublishTestResults@2
+    condition: succeededOrFailed()
+    inputs:
+      testResultsFiles: "**/junit*.xml"
+      testRunTitle: "product-service unit tests"

@@ -1,0 +1,17 @@
+# Copy to prod.tfvars and fill with real values (prod.tfvars is gitignored).
+# All entries below REQUIRE REAL VALUES for a real deployment.
+
+region = "us-east-1"
+azs    = ["us-east-1a", "us-east-1b", "us-east-1c"]
+owner  = "platform-team"
+
+acm_certificate_arn            = "arn:aws:acm:us-east-1:111122223333:certificate/REPLACE-ME"
+cloudfront_acm_certificate_arn = "arn:aws:acm:us-east-1:111122223333:certificate/REPLACE-ME-CF"
+cloudfront_aliases             = ["shop.example.com"]
+
+eks_public_access_cidrs = [] # private endpoint in prod
+
+# DR-region MSK cluster ARN (us-west-2) for cross-region replication.
+dr_msk_cluster_arn = "arn:aws:kafka:us-west-2:111122223333:cluster/ecommerce-prod-dr/REPLACE-ME"
+
+budget_notification_emails = ["finops@example.com"]

@@ -1,0 +1,13 @@
+# Terraform state & working files
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+crash.log
+
+# Real variable files (only *.tfvars.example are committed)
+*.tfvars
+!*.tfvars.example
+
+# Plan output
+*.tfplan

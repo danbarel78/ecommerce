@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cloud-Native E-Commerce Platform — Architecture Deck</title>
+<style>
+  :root {
+    --bg:#06111f; --surf:#0d1f35; --surf2:#152840; --border:#2a415e;
+    --green:#4ade80; --green-d:#22c55e; --green-x:#16a34a;
+    --blue:#60b4ff; --blue-d:#3b82f6; --blue-x:#1d4ed8;
+    --purple:#c084fc; --orange:#fb923c; --red:#f87171; --yellow:#fcd34d;
+    --text:#f0f6ff; --muted:#8dafc8; --dim:#3d5878;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text);
+    overflow:hidden; width:100vw; height:100vh; }
+  body::before { content:''; position:fixed; inset:0;
+    background-image:
+      linear-gradient(rgba(60,180,255,.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(60,180,255,.025) 1px, transparent 1px);
+    background-size:48px 48px; pointer-events:none; z-index:0; }
+
+  .deck { width:100%; height:100%; position:relative; z-index:1; }
+  .slide { position:absolute; inset:0; display:flex; flex-direction:column;
+    justify-content:center; align-items:center; padding:40px 68px;
+    opacity:0; pointer-events:none; transition:opacity .45s ease, transform .45s ease;
+    transform:translateX(36px); overflow:hidden; }
+  .slide.active { opacity:1; pointer-events:all; transform:translateX(0); }
+  .slide.exit { opacity:0; transform:translateX(-36px); }
+  .slide.scroll { justify-content:flex-start; overflow-y:auto; padding-top:52px; padding-bottom:52px; }
+
+  .corner-logo { position:fixed; top:16px; left:22px; z-index:300; opacity:.6; font-size:12px;
+    letter-spacing:2px; color:var(--muted); font-weight:600; text-transform:uppercase; }
+  .corner-logo b { color:var(--blue); }
+
+  .pbar { position:fixed; top:0; left:0; height:3px;
+    background:linear-gradient(90deg,var(--blue),var(--purple),var(--green));
+    transition:width .4s; z-index:200; }
+  .nav { position:fixed; right:22px; top:50%; transform:translateY(-50%);
+    display:flex; flex-direction:column; gap:8px; align-items:center;
+    background:rgba(13,31,53,.92); backdrop-filter:blur(14px);
+    border:1px solid var(--border); border-radius:40px; padding:12px 9px; z-index:100; }
+  .nav button { background:none; border:none; color:var(--muted); font-size:15px;
+    cursor:pointer; padding:4px 12px; border-radius:20px; transition:all .15s; font-family:inherit; }
+  .nav button:hover { background:var(--surf2); color:var(--text); }
+  .nav-ctr { color:var(--muted); font-size:11px; min-width:46px; text-align:center; }
+
+  .eyebrow { font-size:11px; letter-spacing:3px; text-transform:uppercase;
+    color:var(--blue); margin-bottom:12px; font-weight:600; }
+  h1 { font-size:clamp(2rem,4vw,3.6rem); font-weight:800; line-height:1.1; }
+  h2 { font-size:clamp(1.4rem,2.6vw,2.1rem); font-weight:700; margin-bottom:22px; line-height:1.2; }
+  .accent{color:var(--green);} .blue{color:var(--blue);} .purple{color:var(--purple);}
+  .orange{color:var(--orange);} .red{color:var(--red);} .yellow{color:var(--yellow);}
+
+  .card { background:var(--surf); border:1px solid var(--border); border-radius:12px; padding:20px; }
+  .cols-2 { display:grid; grid-template-columns:1fr 1fr; gap:22px; width:100%; }
+  .cols-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; width:100%; }
+  .cols-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; width:100%; }
+
+  .tag { display:inline-block; border-radius:6px; font-size:10px; font-weight:600;
+    padding:3px 8px; letter-spacing:.5px; text-transform:uppercase; }
+  .tg{background:rgba(74,222,128,.15);color:var(--green);border:1px solid rgba(74,222,128,.35);}
+  .tb{background:rgba(96,180,255,.15);color:var(--blue);border:1px solid rgba(96,180,255,.35);}
+  .tp{background:rgba(192,132,252,.15);color:var(--purple);border:1px solid rgba(192,132,252,.35);}
+  .to{background:rgba(251,146,60,.15);color:var(--orange);border:1px solid rgba(251,146,60,.35);}
+  .tr{background:rgba(248,113,113,.15);color:var(--red);border:1px solid rgba(248,113,113,.35);}
+  .ty{background:rgba(252,211,77,.15);color:var(--yellow);border:1px solid rgba(252,211,77,.35);}
+
+  .flist { list-style:none; display:flex; flex-direction:column; gap:8px; }
+  .flist li { display:flex; align-items:flex-start; gap:10px; font-size:13.5px; line-height:1.5; }
+  .flist li::before { content:attr(data-i); font-size:14px; flex-shrink:0; margin-top:1px; }
+
+  .mcard { background:var(--surf); border:1px solid var(--border); border-radius:10px; padding:18px; text-align:center; }
+  .mval { font-size:2.2rem; font-weight:800; font-family:'Cascadia Code','JetBrains Mono',monospace; }
+  .mlbl { font-size:12px; color:var(--muted); margin-top:5px; line-height:1.4; }
+
+  .cb { background:#060d18; border:1px solid var(--border); border-radius:8px; padding:14px 16px;
+    font-family:'Cascadia Code','JetBrains Mono',monospace; font-size:12px; line-height:1.7;
+    white-space:pre; overflow:auto; width:100%; }
+  .ck{color:var(--blue);} .cv{color:var(--green);} .cs{color:var(--orange);} .cc{color:var(--dim);} .cy{color:var(--yellow);}
+
+  /* generic data table */
+  table.dt { width:100%; border-collapse:collapse; font-size:12.5px; background:var(--surf);
+    border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+  table.dt th,table.dt td { text-align:left; padding:9px 13px; border-bottom:1px solid var(--border); }
+  table.dt th { color:var(--muted); text-transform:uppercase; font-size:10px; letter-spacing:.7px;
+    background:rgba(255,255,255,.02); }
+  table.dt tr:last-child td { border-bottom:none; }
+  table.dt code { color:var(--yellow); font-family:'Cascadia Code',monospace; font-size:11.5px; }
+
+  /* flow row (sequence-style) */
+  .flow { display:flex; flex-direction:column; gap:8px; width:100%; }
+  .fstep { display:flex; align-items:center; gap:14px; background:var(--surf);
+    border:1px solid var(--border); border-radius:10px; padding:11px 16px; }
+  .fnum { flex-shrink:0; width:26px; height:26px; border-radius:50%; background:var(--surf2);
+    border:1px solid var(--border); display:flex; align-items:center; justify-content:center;
+    font-family:'Cascadia Code',monospace; font-size:12px; color:var(--blue); font-weight:700; }
+  .factor { flex-shrink:0; font-family:'Cascadia Code',monospace; font-size:11px; color:var(--purple);
+    min-width:150px; }
+  .ftext { font-size:13px; color:var(--text); line-height:1.45; }
+  .ftext .m { color:var(--muted); }
+
+  /* layer stack (architecture) */
+  .layer { background:var(--surf); border:1px solid var(--border); border-radius:10px;
+    padding:11px 18px; display:flex; align-items:center; gap:16px; width:100%; }
+  .llbl { font-size:9.5px; text-transform:uppercase; letter-spacing:1.5px; color:var(--muted);
+    min-width:96px; flex-shrink:0; }
+  .chips { display:flex; gap:7px; flex-wrap:wrap; }
+  .chip { background:var(--surf2); border:1px solid var(--border); border-radius:6px; padding:4px 10px;
+    font-size:11.5px; font-family:'Cascadia Code','JetBrains Mono',monospace; }
+  .larrow { text-align:center; color:var(--dim); font-size:13px; line-height:1; }
+
+  .info { background:rgba(96,180,255,.08); border:1px solid rgba(96,180,255,.25); border-radius:10px;
+    padding:11px 15px; font-size:12.5px; color:var(--blue); display:flex; gap:10px; align-items:flex-start; line-height:1.55; }
+  .warn { background:rgba(248,113,113,.08); border:1px solid rgba(248,113,113,.3); border-radius:10px;
+    padding:11px 15px; font-size:12.5px; color:var(--red); display:flex; gap:10px; align-items:flex-start; line-height:1.55; }
+  .note { background:rgba(74,222,128,.06); border:1px solid rgba(74,222,128,.22); border-radius:10px;
+    padding:11px 15px; font-size:12.5px; color:var(--green); display:flex; gap:10px; align-items:flex-start; line-height:1.55; }
+
+  .kbd { display:inline-block; border:1px solid var(--border); border-radius:4px; padding:2px 6px;
+    font-size:11px; color:var(--muted); background:var(--surf2); }
+
+  @keyframes fadeUp { from{opacity:0;transform:translateY(14px);} to{opacity:1;transform:translateY(0);} }
+  .slide.active .anim > * { animation:fadeUp .4s ease forwards; opacity:0; }
+  .slide.active .anim > *:nth-child(1){animation-delay:.05s}
+  .slide.active .anim > *:nth-child(2){animation-delay:.11s}
+  .slide.active .anim > *:nth-child(3){animation-delay:.17s}
+  .slide.active .anim > *:nth-child(4){animation-delay:.23s}
+  .slide.active .anim > *:nth-child(5){animation-delay:.29s}
+  .slide.active .anim > *:nth-child(6){animation-delay:.35s}
+  .slide.active .anim > *:nth-child(7){animation-delay:.41s}
+  .slide.active .anim > *:nth-child(8){animation-delay:.47s}
+  .slide.active .anim > *:nth-child(9){animation-delay:.53s}
+
+  .divider { text-align:center; }
+  .sec-num { font-size:16vw; font-weight:900; opacity:.04; line-height:1;
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    font-family:'Cascadia Code',monospace; pointer-events:none; }
+
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+  .subhead { font-size:11px; text-transform:uppercase; letter-spacing:1.5px; color:var(--muted); margin:2px 0 10px; }
+
+  /* ═══ AWS-ICON NODES (page 5/6 style) ═══ */
+  .node { display:flex; flex-direction:column; align-items:center; gap:8px; flex-shrink:0; }
+  .node-box { width:82px; height:82px; border-radius:16px; background:var(--surf);
+    border:2px solid var(--border); display:flex; align-items:center; justify-content:center;
+    transition:all .4s; box-shadow:0 2px 12px rgba(0,0,0,.35); }
+  .node-box img { width:46px; height:46px; object-fit:contain; }
+  .node-box.sm { width:60px; height:60px; border-radius:12px; }
+  .node-box.sm img { width:34px; height:34px; }
+  .node-box.glow-b { border-color:var(--blue); box-shadow:0 0 24px rgba(96,180,255,.4); }
+  .node-box.glow-g { border-color:var(--green); box-shadow:0 0 24px rgba(74,222,128,.4); }
+  .node-box.glow-p { border-color:var(--purple); box-shadow:0 0 24px rgba(192,132,252,.4); }
+  .node-box.glow-y { border-color:var(--yellow); box-shadow:0 0 24px rgba(252,211,77,.4); }
+  .node-lbl { font-size:12px; font-weight:700; text-align:center; line-height:1.3; }
+  .node-sub { font-size:10px; color:var(--muted); text-align:center; margin-top:-4px; }
+
+  /* vertical connector w/ flowing dots */
+  .vconn { width:2px; position:relative; overflow:visible; margin:6px 0; }
+  .vconn .fd { width:10px; height:10px; border-radius:50%; position:absolute; left:-4px; }
+  @keyframes flowDown { 0%{top:-5px;opacity:0} 15%{opacity:1} 85%{opacity:1} 100%{top:calc(100% + 5px);opacity:0} }
+  .slide.active .vconn .fd { animation:flowDown 1.5s linear infinite; }
+
+  /* horizontal connector w/ traveling dot */
+  .hconn { flex:1; height:2px; background:var(--dim); position:relative; margin:0 8px; overflow:visible; align-self:center; }
+  .hconn .lbl { position:absolute; top:-19px; left:50%; transform:translateX(-50%); font-size:10px; color:var(--muted); white-space:nowrap; }
+  .hconn .lbl.below { top:8px; }
+  .hconn .td { width:9px; height:9px; border-radius:50%; position:absolute; top:-3.5px; left:-4px; opacity:0; }
+  @keyframes travelDot { 0%{left:-4px;opacity:0} 8%{opacity:1} 92%{opacity:1} 100%{left:calc(100% - 4px);opacity:0} }
+  .slide.active .hconn .td { animation:travelDot 1.2s linear infinite; }
+  .hconn::after { content:''; position:absolute; right:-1px; top:-4px; border:5px solid transparent; border-left:8px solid var(--dim); }
+
+  @keyframes spinGear { from{transform:rotate(0)} to{transform:rotate(360deg)} }
+  @keyframes pulseNode { 0%,100%{box-shadow:0 0 18px rgba(74,222,128,.3)} 50%{box-shadow:0 0 34px rgba(74,222,128,.6)} }
+  .slide.active .pulse { animation:pulseNode 2s ease-in-out infinite; }
+  .slide.active .spin { animation:spinGear 6s linear infinite; }
+
+  /* fan-out tree (page 6) */
+  .fanout { position:relative; height:26px; width:100%; }
+  .fanout .stem { position:absolute; left:50%; top:0; transform:translateX(-50%); width:2px; height:13px; background:rgba(192,132,252,.5); }
+  .fanout .bar { position:absolute; left:8%; right:8%; top:13px; height:2px;
+    background:linear-gradient(to right,rgba(74,222,128,.5),rgba(96,180,255,.5),rgba(192,132,252,.5),rgba(251,146,60,.5),rgba(252,211,77,.5)); }
+  .fanout .drop { position:absolute; top:13px; width:2px; height:13px; transform:translateX(-50%); }
+
+  /* worker card w/ icon */
+  .wnode { flex:1; background:var(--surf2); border:1px solid var(--border); border-radius:10px;
+    padding:12px 8px; text-align:center; box-shadow:0 2px 10px rgba(0,0,0,.4); }
+  .wnode img { width:30px; height:30px; object-fit:contain; margin-bottom:5px; }
+  .wnode .t { font-size:11.5px; font-weight:700; }
+  .wnode .s { font-size:9.5px; color:var(--muted); margin-top:3px; line-height:1.4; }
+
+  .replay { background:var(--surf2); color:var(--muted); border:1px solid var(--border);
+    padding:7px 16px; border-radius:8px; cursor:pointer; font-family:inherit; font-size:12.5px; }
+  .replay:hover { border-color:var(--blue); color:var(--blue); }
+
+  /* ═══ PAGE-6 LAYER BANDS ═══ */
+  .band { width:100%; border-radius:14px; padding:11px 14px;
+    box-shadow:0 4px 26px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.05); }
+  .band-b { background:linear-gradient(145deg,rgba(59,130,246,.09),rgba(192,132,252,.05)); border:1.5px solid rgba(96,180,255,.45); }
+  .band-p { background:linear-gradient(145deg,rgba(192,132,252,.09),rgba(251,146,60,.04)); border:1.5px solid rgba(192,132,252,.45); }
+  .band-g { background:linear-gradient(145deg,rgba(74,222,128,.08),rgba(96,180,255,.04)); border:1.5px solid rgba(74,222,128,.42); }
+  .band-hd { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+  .band-hd .ic { font-size:11px; border-radius:5px; padding:2px 7px; display:inline-flex; align-items:center; }
+  .band-hd .ic img { width:15px; height:15px; }
+  .band-hd .t { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:2.5px; }
+  .band-hd .rule { flex:1; height:1px; }
+  .band-row { display:flex; align-items:stretch; gap:0; }
+
+  /* node card inside a band (icon + label + sub) */
+  .bnode { flex:1; background:var(--surf2); border:1px solid var(--border); border-radius:8px;
+    padding:9px 8px; text-align:center; box-shadow:0 2px 10px rgba(0,0,0,.4); }
+  .bnode img { width:32px; height:32px; object-fit:contain; margin-bottom:3px; }
+  .bnode .t { font-size:11px; font-weight:700; }
+  .bnode .s { font-size:9px; color:var(--muted); margin-top:2px; line-height:1.4; }
+
+  /* horizontal arrow between band nodes (page-6 style: line + traveling dot + arrowhead) */
+  .harr { flex-shrink:0; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:0 3px; min-width:52px; }
+  .harr .lab { font-size:9px; color:var(--muted); margin-bottom:3px; white-space:nowrap; }
+  .harr .track { display:flex; align-items:center; width:100%; }
+  .harr .ln { flex:1; height:2px; position:relative; overflow:visible; }
+  .harr .ln .dt { position:absolute; top:-3px; width:8px; height:8px; border-radius:50%; }
+  .harr .hd { width:0; height:0; border-top:4px solid transparent; border-bottom:4px solid transparent; }
+  .slide.active .harr .ln .dt { animation:travelDot .8s linear infinite; }
+
+  /* labeled pill bridge between bands */
+  .bridge { display:flex; flex-direction:column; align-items:center; gap:0; }
+  .bridge .stub { width:2px; height:8px; }
+  .bridge .pill { border-radius:20px; padding:3px 18px; font-size:10px;
+    font-family:'Cascadia Code','JetBrains Mono',monospace; letter-spacing:.5px; white-space:nowrap; }
+  .bridge .fd { width:10px; height:10px; border-radius:50%; position:absolute; left:-4px; }
+  .bridge .tip { width:0; height:0; border-left:6px solid transparent; border-right:6px solid transparent; }
+</style>
+</head>
+<body>
+<script>
+/* AWS official service icons — inlined as base64 data URIs (self-contained; render on file://). Source: ./aws-icons/*.svg */
+const AWS = {
+  route53: 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB3aWR0aD0iODBweCIgaGVpZ2h0PSI4MHB4IiB2aWV3Qm94PSIwIDAgODAgODAiIHZlcnNpb249IjEuMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayI+CiAgICA8IS0tIEdlbmVyYXRvcjogU2tldGNoIDY0ICg5MzUzNykgLSBodHRwczovL3NrZXRjaC5jb20gLS0+CiAgICA8dGl0bGU+SWNvbi1BcmNoaXRlY3R1cmUvNjQvQXJjaF9BbWF6b24tUm91dGUtNTNfNjQ8L3RpdGxlPgogICAgPGRlc2M+Q3JlYXRlZCB3aXRoIFNrZXRjaC48L2Rlc2M+CiAgICA8ZGVmcz4KICAgICAgICA8bGluZWFyR3JhZGllbnQgeDE9IjAlIiB5MT0iMTAwJSIgeDI9IjEwMCUiIHkyPSIwJSIgaWQ9ImxpbmVhckdyYWRpZW50LTEiPgogICAgICAgICAgICA8c3RvcCBzdG9wLWNvbG9yPSIjNEQyN0E4IiBvZmZzZXQ9IjAlIj48L3N0b3A+CiAgICAgICAgICAgIDxzdG9wIHN0b3AtY29sb3I9IiNBMTY2RkYiIG9mZnNldD0iMTAwJSI+PC9zdG9wPgogICAgICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICA8L2RlZnM+CiAgICA8ZyBpZD0iSWNvbi1BcmNoaXRlY3R1cmUvNjQvQXJjaF9BbWF6b24tUm91dGUtNTNfNjQiIHN0cm9rZT0ibm9uZSIgc3Ryb2tlLXdpZHRoPSIxIiBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPgogICAgICAgIDxnIGlkPSJJY29uLUFyY2hpdGVjdHVyZS1CRy82NC9OZXR3b3JraW5nLUNvbnRlbnQtRGVsaXZlcnkiIGZpbGw9InVybCgjbGluZWFyR3JhZGllbnQtMSkiPgogICAgICAgICAgICA8cmVjdCBpZD0iUmVjdGFuZ2xlIiB4PSIwIiB5PSIwIiB3aWR0aD0iODAiIGhlaWdodD0iODAiPjwvcmVjdD4KICAgICAgICA8L2c+CiAgICAgICAgPHBhdGggZD0iTTQ4LjY5Miw0MC42Nzk1MTA5IEM0OS40MzEsNDEuMzYyNzczMiA0OS44MDEsNDIuMjc4MTI0NiA0OS44MDEsNDMuNDI3NTY1OSBDNDkuODAxLDQ0LjY3ODA0NiA0OS4zNTEsNDUuNjc2NDI5MyA0OC40NTIsNDYuNDIyNzE1OSBDNDcuNTUyLDQ3LjE3MDAwMjggNDYuMzQzLDQ3LjU0MzE0NiA0NC44MjYsNDcuNTQzMTQ2IEM0My42MjcsNDcuNTQzMTQ2IDQyLjQ0LDQ3LjI4NzA0NzcgNDEuMjY2LDQ2Ljc3Njg1MTggTDQxLjI2Niw0NS4yNDUyNjM4IEM0Mi42NTcsNDUuNzA1NDQwNSA0My44NDMsNDUuOTM0NTI4NCA0NC44MjYsNDUuOTM0NTI4NCBDNDUuNzk2LDQ1LjkzNDUyODQgNDYuNTQyLDQ1LjcxNzQ0NTEgNDcuMDY1LDQ1LjI4NDI3ODggQzQ3LjU4OCw0NC44NTAxMTIxIDQ3Ljg0OSw0NC4yMzA4NzQ0IDQ3Ljg0OSw0My40Mjc1NjU5IEM0Ny44NDksNDEuODgyOTcyOSA0Ni44NzQsNDEuMTEwNjc2NCA0NC45MjEsNDEuMTEwNjc2NCBDNDQuMzA5LDQxLjExMDY3NjQgNDMuNzAzLDQxLjE0MjY4ODcgNDMuMTAzLDQxLjIwNTcxMjkgTDQzLjEwMywzOS45NDMyMjgyIEw0Ny4xMjMsMzUuNTU4NTQ0OCBMNDEuNDU4LDM1LjU1ODU0NDggTDQxLjQ1OCwzMy45ODg5NDIyIEw0OS4yNDcsMzMuOTg4OTQyMiBMNDkuMjQ3LDM1LjUwMTUyMjkgTDQ1LjMwNCwzOS42NzUxMjUzIEM0NS4zNjksMzkuNjYyMTIwMyA0NS40MzEsMzkuNjU2MTE4IDQ1LjQ5NiwzOS42NTYxMTggTDQ1LjY4NywzOS42NTYxMTggQzQ2Ljk1MSwzOS42NTYxMTggNDcuOTUyLDM5Ljk5NzI0ODkgNDguNjkyLDQwLjY3OTUxMDkgTTM3LjU3NCw0MC4zNDUzODI2IEMzOC4zNTEsNDEuMDcyNjYxOCAzOC43NCw0Mi4wNzQwNDYzIDM4Ljc0LDQzLjM0OTUzNiBDMzguNzQsNDQuNjAxMDE2NSAzOC4yODgsNDUuNjEyNDA0OCAzNy4zODEsNDYuMzg0NzAxMyBDMzYuNDc1LDQ3LjE1Njk5NzggMzUuMjgzLDQ3LjU0MzE0NiAzMy44MDMsNDcuNTQzMTQ2IEMzMi41MDMsNDcuNTQzMTQ2IDMxLjI4NCw0Ny4yODcwNDc3IDMwLjE0OCw0Ni43NzY4NTE4IEwzMC4xNDgsNDUuMjQ1MjYzOCBDMzEuNTY0LDQ1LjcwNTQ0MDUgMzIuNzc2LDQ1LjkzNDUyODQgMzMuNzg0LDQ1LjkzNDUyODQgQzM0Ljc1NCw0NS45MzQ1Mjg0IDM1LjQ5Nyw0NS43MTU0NDQzIDM2LjAxMyw0NS4yNzQyNzQ5IEMzNi41Myw0NC44MzQxMDYgMzYuNzg5LDQ0LjE5OTg2MjQgMzYuNzg5LDQzLjM2OTU0MzcgQzM2Ljc4OSw0Mi40NjMxOTU3IDM2LjU0Niw0MS44MDU5NDM0IDM2LjA2MSw0MS4zOTc3ODY3IEMzNS41NzYsNDAuOTg5NjI5OSAzNC43ODUsNDAuNzg0NTUxMiAzMy42ODgsNDAuNzg0NTUxMiBDMzIuODk3LDQwLjc4NDU1MTIgMzEuOTA5LDQwLjg0OTU3NjIgMzAuNzIyLDQwLjk3NjYyNSBMMzAuNzIyLDM5LjcxMzEzOTkgTDMxLjA4NiwzMy45ODg5NDIyIEwzOC4wNzEsMzMuOTg4OTQyMiBMMzguMDcxLDM1LjU1ODU0NDggTDMyLjY5MywzNS41NTg1NDQ4IEwzMi40NDQsMzkuNDQ1MDM2OSBDMzMuMTQ2LDM5LjMxNzk4ODIgMzMuNzc3LDM5LjI1Mzk2MzYgMzQuMzM4LDM5LjI1Mzk2MzYgQzM1LjcxNiwzOS4yNTM5NjM2IDM2Ljc5NSwzOS42MTcxMDMgMzcuNTc0LDQwLjM0NTM4MjYgTTUxLjk1Nyw1NC4zNzc3NyBDNDcuMTAzLDU1LjI1MDEwNSA0Mi44NTIsNTcuMjI2ODYzOSA0MCw1OC44Mzc0ODIyIEMzNy4xNDcsNTcuMjI2ODYzOSAzMi44OTYsNTUuMjUwMTA1IDI4LjA0Myw1NC4zNzc3NyBDMjYuNjc3LDU0LjEzMjY3NTkgMTkuODY5LDUyLjcxMTEzMDIgMTkuODY5LDQ4Ljc3NTYxOTIgQzE5Ljg2OSw0Ni45NTE5MTkgMjAuNTIyLDQ1Ljc0MjQ1NDcgMjEuNzc2LDQzLjU4MjYyNTUgQzIzLjI3NCw0MC45OTk2MzM4IDI1LjEzOCwzNy43ODQzOTk0IDI1LjEzOCwzMy4xNTU2MjIyIEMyNS4xMzgsMjkuODQ3MzUyMSAyNC4yNzEsMjYuNjc1MTM0MiAyMi41NTksMjMuNzE0OTk3NyBDMjIuNzYsMjMuNDY2OTAyNSAyMi45NjUsMjMuMjE1ODA2MSAyMy4xNzEsMjIuOTYyNzA4OSBDMjUuNzA3LDI0LjIzMDE5NTUgMjguMzQ3LDI0Ljg3MjQ0MjEgMzEuMDMxLDI0Ljg3MjQ0MjEgQzM0LjMxMSwyNC44NzI0NDIxIDM3LjMyNSwyNC4wMTExMTE0IDQwLDIyLjMxMTQ1ODkgQzQyLjY3NCwyNC4wMTExMTE0IDQ1LjY4OCwyNC44NzI0NDIxIDQ4Ljk2OCwyNC44NzI0NDIxIEM1MS42NTIsMjQuODcyNDQyMSA1NC4yOTMsMjQuMjMwMTk1NSA1Ni44MjksMjIuOTYyNzA4OSBDNTcuMDM0LDIzLjIxNTgwNjEgNTcuMjM5LDIzLjQ2NjkwMjUgNTcuNDQsMjMuNzE0OTk3NyBDNTUuNzI4LDI2LjY3NTEzNDIgNTQuODYxLDI5Ljg0NzM1MjEgNTQuODYxLDMzLjE1NTYyMjIgQzU0Ljg2MSwzNy43ODQzOTk0IDU2LjcyNSw0MC45OTk2MzM4IDU4LjIyNiw0My41ODY2MjcgQzU5LjQ3Nyw0NS43NDI0NTQ3IDYwLjEzLDQ2Ljk1MTkxOSA2MC4xMyw0OC43NzU2MTkyIEM2MC4xMyw1Mi43MTExMzAyIDUzLjMyMiw1NC4xMzI2NzU5IDUxLjk1Nyw1NC4zNzc3NyBNNTYuODYxLDMzLjE1NTYyMjIgQzU2Ljg2MSwyOS45OTc0MDk3IDU3Ljc1MiwyNi45NzAyNDc1IDU5LjUwNywyNC4xNTgxNjc5IEM1OS43MzUsMjMuNzk1MDI4NCA1OS43MDYsMjMuMzI3ODQ5MSA1OS40MzQsMjIuOTk1NzIxNiBDNTguOTI2LDIyLjM3MzQ4MjcgNTguMzkzLDIxLjcxODIzMTEgNTcuODY3LDIxLjA2Njk4MTEgQzU3LjU2MiwyMC42ODk4MzYzIDU3LjAzMiwyMC41ODU3OTYzIDU2LjYwNiwyMC44MTk4ODYyIEM1NC4xNDMsMjIuMTgxNDA4OSA1MS41NzQsMjIuODcxNjczOSA0OC45NjgsMjIuODcxNjczOSBDNDUuODI0LDIyLjg3MTY3MzkgNDMuMDc3LDIyLjAyNjM0OTQgNDAuNTY5LDIwLjI4ODY4MjMgQzQwLjIyNywyMC4wNTE1OTEyIDM5Ljc3MiwyMC4wNTE1OTEyIDM5LjQzLDIwLjI4ODY4MjMgQzM2LjkyMiwyMi4wMjYzNDk0IDM0LjE3NSwyMi44NzE2NzM5IDMxLjAzMSwyMi44NzE2NzM5IEMyOC40MjUsMjIuODcxNjczOSAyNS44NTYsMjIuMTgxNDA4OSAyMy4zOTMsMjAuODE5ODg2MiBDMjIuOTY4LDIwLjU4NTc5NjMgMjIuNDM3LDIwLjY4OTgzNjMgMjIuMTMyLDIxLjA2Njk4MTEgQzIxLjYwNiwyMS43MTgyMzExIDIxLjA3MywyMi4zNzM0ODI3IDIwLjU2NSwyMi45OTU3MjE2IEMyMC4yOTQsMjMuMzI3ODQ5MSAyMC4yNjQsMjMuNzk1MDI4NCAyMC40OTIsMjQuMTU4MTY3OSBDMjIuMjQ4LDI2Ljk3MDI0NzUgMjMuMTM4LDI5Ljk5NzQwOTcgMjMuMTM4LDMzLjE1NTYyMjIgQzIzLjEzOCwzNy4yNDYxOTI3IDIxLjQyMyw0MC4yMDIzMjc3IDIwLjA0NSw0Mi41ODEyNDEgQzE4LjY5NSw0NC45MDQxMzI4IDE3Ljg2OSw0Ni40NDY3MjUxIDE3Ljg2OSw0OC43NzU2MTkyIEMxNy44NjksNTQuMTY0Njg4MiAyNS4zODUsNTUuOTM0MzY3NyAyNy42ODksNTYuMzQ3NTI2MyBDMzIuNTQ5LDU3LjIyMDg2MTYgMzYuNzkzLDU5LjI4MDY1MjQgMzkuNDk3LDYwLjg1NDI1NjUgQzM5LjY1Miw2MC45NDUyOTE1IDM5LjgyNiw2MC45OTAzMDg4IDQwLDYwLjk5MDMwODggQzQwLjE3Myw2MC45OTAzMDg4IDQwLjM0Nyw2MC45NDUyOTE1IDQwLjUwMyw2MC44NTQyNTY1IEM0My4yMDcsNTkuMjgwNjUyNCA0Ny40NSw1Ny4yMjA4NjE2IDUyLjMxLDU2LjM0NzUyNjMgQzU0LjYxNCw1NS45MzQzNjc3IDYyLjEzLDU0LjE2NDY4ODIgNjIuMTMsNDguNzc1NjE5MiBDNjIuMTMsNDYuNDQ2NzI1MSA2MS4zMDQsNDQuOTA0MTMyOCA1OS45NTQsNDIuNTc4MjM5OSBDNTguNTc2LDQwLjIwMjMyNzcgNTYuODYxLDM3LjI0NjE5MjcgNTYuODYxLDMzLjE1NTYyMjIgTTUyLjk5NCw2MC4xNTY5ODg4IEM0Ni44NjMsNjEuMjU5NDEyMSA0MS43MjMsNjQuNTU2Njc4IDQwLDY1Ljc2NDE0MTYgQzM4LjI3Niw2NC41NTY2NzggMzMuMTM2LDYxLjI1OTQxMjEgMjcuMDA1LDYwLjE1Njk4ODggQzE0LjkzNyw1Ny45ODkxNTY2IDE0LDUwLjg5NzQzMzggMTQsNDguNzc1NjE5MiBDMTQsNDUuMjg1Mjc5MiAxNS4zNzEsNDIuOTIzMzcyNCAxNi42OTcsNDAuNjM3NDk0OCBDMTcuOTYxLDM4LjQ1OTY1ODYgMTkuMjY4LDM2LjIwNjc5MzcgMTkuMjY4LDMzLjE1NTYyMjIgQzE5LjI2OCwyOC4zMzU3NzE4IDE2LjQ4NSwyNC45MzE0NjQ4IDE1LjExMiwyMy41NDU5MzI4IEMxNi41NTYsMjEuNzg5MjU4NCAyMC4yMDQsMTcuMzQxNTUwOCAyMi4wMDMsMTUuMDIzNjYwOSBDMjQuNzI5LDE3LjU5NjY0ODcgMjcuODk4LDE5LjAwMDE4NzYgMzEuMDMxLDE5LjAwMDE4NzYgQzM0LjUwOSwxOS4wMDAxODc2IDM3LjM4NSwxNy41ODQ2NDQxIDQwLDE0LjU2NDQ4NDYgQzQyLjYxNCwxNy41ODQ2NDQxIDQ1LjQ5LDE5LjAwMDE4NzYgNDguOTY4LDE5LjAwMDE4NzYgQzUyLjEwMSwxOS4wMDAxODc2IDU1LjI3LDE3LjU5NjY0ODcgNTcuOTk3LDE1LjAyMzY2MDkgQzU5Ljc5NiwxNy4zNDE1NTA4IDYzLjQ0MywyMS43ODkyNTg0IDY0Ljg4NywyMy41NDU5MzI4IEM2My41MTQsMjQuOTMxNDY0OCA2MC43MzEsMjguMzM1NzcxOCA2MC43MzEsMzMuMTU1NjIyMiBDNjAuNzMxLDM2LjIwNjc5MzcgNjIuMDM5LDM4LjQ1OTY1ODYgNjMuMzAyLDQwLjYzNzQ5NDggQzY0LjYyOSw0Mi45MjMzNzI0IDY2LDQ1LjI4NTI3OTIgNjYsNDguNzc1NjE5MiBDNjYsNTAuODk3NDMzOCA2NS4wNjIsNTcuOTg5MTU2NiA1Mi45OTQsNjAuMTU2OTg4OCBNNjUuMDMyLDM5LjYzNDEwOTUgQzYzLjc5NywzNy41MDUyOTIyIDYyLjczMSwzNS42Njc1ODY3IDYyLjczMSwzMy4xNTU2MjIyIEM2Mi43MzEsMjcuODY3NTkyIDY2Ljg0NywyNC40NDcyNzg5IDY2Ljg4NywyNC40MTUyNjY2IEM2Ny4wOTQsMjQuMjQ3MjAyMSA2Ny4yMjYsMjQuMDAzMTA4MyA2Ny4yNTQsMjMuNzM3MDA2MiBDNjcuMjgsMjMuNDcwOTA0IDY3LjIsMjMuMjA1ODAyMiA2Ny4wMywyMi45OTk3MjMxIEM2Ni45NjMsMjIuOTE5NjkyNCA2MC40MDgsMTQuOTcyNjQxMyA1OC45MDYsMTIuOTEzODUwOSBDNTguNzMsMTIuNjcyNzU4MyA1OC40NTcsMTIuNTIyNzAwNyA1OC4xNTksMTIuNTA0NjkzOCBDNTcuODYsMTIuNDgyNjg1MyA1Ny41NzIsMTIuNjAxNzMxIDU3LjM2OCwxMi44MTk4MTQ4IEM1NC44NDgsMTUuNTE0ODQ5NSA1MS44NjYsMTYuOTk5NDE5NCA0OC45NjgsMTYuOTk5NDE5NCBDNDUuNzY0LDE2Ljk5OTQxOTQgNDMuMjQ0LDE1LjU3MTg3MTMgNDAuNzk0LDEyLjM3MDY0MjMgQzQwLjQxNSwxMS44NzY0NTI2IDM5LjU4NSwxMS44NzY0NTI2IDM5LjIwNiwxMi4zNzA2NDIzIEMzNi43NTUsMTUuNTcxODcxMyAzNC4yMzUsMTYuOTk5NDE5NCAzMS4wMzEsMTYuOTk5NDE5NCBDMjguMTMzLDE2Ljk5OTQxOTQgMjUuMTUxLDE1LjUxNDg0OTUgMjIuNjMxLDEyLjgxOTgxNDggQzIyLjQyNywxMi42MDE3MzEgMjIuMTM3LDEyLjQ3NzY4MzQgMjEuODQsMTIuNTA0NjkzOCBDMjEuNTQzLDEyLjUyMjcwMDcgMjEuMjY5LDEyLjY3Mjc1ODMgMjEuMDkzLDEyLjkxMzg1MDkgQzE5LjU5MSwxNC45NzI2NDEzIDEzLjAzNiwyMi45MTk2OTI0IDEyLjk2OSwyMi45OTk3MjMxIEMxMi44LDIzLjIwNTgwMjIgMTIuNzIsMjMuNDcwOTA0IDEyLjc0NywyMy43MzYwMDU4IEMxMi43NzMsMjQuMDAxMTA3NiAxMi45MDQsMjQuMjQ1MjAxMyAxMy4xMSwyNC40MTMyNjU4IEMxMy4xNTIsMjQuNDQ3Mjc4OSAxNy4yNjgsMjcuODY3NTkyIDE3LjI2OCwzMy4xNTU2MjIyIEMxNy4yNjgsMzUuNjY3NTg2NyAxNi4yMDIsMzcuNTA1MjkyMiAxNC45NjcsMzkuNjM0MTA5NSBDMTMuNTc2LDQyLjAzMTAyOTggMTIsNDQuNzQ3MDcyNSAxMiw0OC43NzU2MTkyIEMxMiw1NS40ODcxOTYgMTcuNDc3LDYwLjQ3ODExMjEgMjYuNjUyLDYyLjEyNjc0NTEgQzMzLjU1OSw2My4zNjgyMjE3IDM5LjMzNCw2Ny43NDg5MDM2IDM5LjM5MSw2Ny43OTM5MjA5IEMzOS41Nyw2Ny45MzA5NzM1IDM5Ljc4NSw2OCA0MCw2OCBDNDAuMjE0LDY4IDQwLjQyOSw2Ny45MzA5NzM1IDQwLjYwOSw2Ny43OTI5MjA1IEM0MC42NjcsNjcuNzQ4OTAzNiA0Ni40MjIsNjMuMzcxMjIyOSA1My4zNDcsNjIuMTI2NzQ1MSBDNjIuNTIyLDYwLjQ3ODExMjEgNjgsNTUuNDg3MTk2IDY4LDQ4Ljc3NTYxOTIgQzY4LDQ0Ljc0NzA3MjUgNjYuNDIzLDQyLjAzMTAyOTggNjUuMDMyLDM5LjYzNDEwOTUiIGlkPSJBbWF6b24tUm91dGUtNTMtSWNvbl82NF9TcXVpZCIgZmlsbD0iI0ZGRkZGRiI+PC9wYXRoPgogICAgPC9nPgo8L3N2Zz4=',
+  cloudfront: 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB3aWR0aD0iODBweCIgaGVpZ2h0PSI4MHB4IiB2aWV3Qm94PSIwIDAgODAgODAiIHZlcnNpb249IjEuMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayI+CiAgICA8IS0tIEdlbmVyYXRvcjogU2tldGNoIDY0ICg5MzUzNykgLSBodHRwczovL3NrZXRjaC5jb20gLS0+CiAgICA8dGl0bGU+SWNvbi1BcmNoaXRlY3R1cmUvNjQvQXJjaF9BbWF6b24tQ2xvdWRGcm9udF82NDwvdGl0bGU+CiAgICA8ZGVzYz5DcmVhdGVkIHdpdGggU2tldGNoLjwvZGVzYz4KICAgIDxkZWZzPgogICAgICAgIDxsaW5lYXJHcmFkaWVudCB4MT0iMCUiIHkxPSIxMDAlIiB4Mj0iMTAwJSIgeTI9IjAlIiBpZD0ibGluZWFyR3JhZGllbnQtMSI+CiAgICAgICAgICAgIDxzdG9wIHN0b3AtY29sb3I9IiM0RDI3QTgiIG9mZnNldD0iMCUiPjwvc3RvcD4KICAgICAgICAgICAgPHN0b3Agc3RvcC1jb2xvcj0iI0ExNjZGRiIgb2Zmc2V0PSIxMDAlIj48L3N0b3A+CiAgICAgICAgPC9saW5lYXJHcmFkaWVudD4KICAgIDwvZGVmcz4KICAgIDxnIGlkPSJJY29uLUFyY2hpdGVjdHVyZS82NC9BcmNoX0FtYXpvbi1DbG91ZEZyb250XzY0IiBzdHJva2U9Im5vbmUiIHN0cm9rZS13aWR0aD0iMSIgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIj4KICAgICAgICA8ZyBpZD0iSWNvbi1BcmNoaXRlY3R1cmUtQkcvNjQvTmV0d29ya2luZy1Db250ZW50LURlbGl2ZXJ5IiBmaWxsPSJ1cmwoI2xpbmVhckdyYWRpZW50LTEpIj4KICAgICAgICAgICAgPHJlY3QgaWQ9IlJlY3RhbmdsZSIgeD0iMCIgeT0iMCIgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIj48L3JlY3Q+CiAgICAgICAgPC9nPgogICAgICAgIDxwYXRoIGQ9Ik01NS4xMjIsNTIuMTIzIEM1NS4xMjIsNTAuNDY5IDUzLjc3Niw0OS4xMjMgNTIuMTIyLDQ5LjEyMyBDNTAuNDY4LDQ5LjEyMyA0OS4xMjIsNTAuNDY5IDQ5LjEyMiw1Mi4xMjMgQzQ5LjEyMiw1My43NzcgNTAuNDY4LDU1LjEyMyA1Mi4xMjIsNTUuMTIzIEM1My43NzYsNTUuMTIzIDU1LjEyMiw1My43NzcgNTUuMTIyLDUyLjEyMyBMNTUuMTIyLDUyLjEyMyBaIE01Ny4xMjIsNTIuMTIzIEM1Ny4xMjIsNTQuODggNTQuODc5LDU3LjEyMyA1Mi4xMjIsNTcuMTIzIEM0OS4zNjUsNTcuMTIzIDQ3LjEyMiw1NC44OCA0Ny4xMjIsNTIuMTIzIEM0Ny4xMjIsNDkuMzY2IDQ5LjM2NSw0Ny4xMjMgNTIuMTIyLDQ3LjEyMyBDNTQuODc5LDQ3LjEyMyA1Ny4xMjIsNDkuMzY2IDU3LjEyMiw1Mi4xMjMgTDU3LjEyMiw1Mi4xMjMgWiBNMzAuMzkyLDM3LjY5MiBDMzAuMzkyLDM2LjAzOCAyOS4wNDYsMzQuNjkyIDI3LjM5MiwzNC42OTIgQzI1LjczNywzNC42OTIgMjQuMzkyLDM2LjAzOCAyNC4zOTIsMzcuNjkyIEMyNC4zOTIsMzkuMzQ2IDI1LjczNyw0MC42OTIgMjcuMzkyLDQwLjY5MiBDMjkuMDQ2LDQwLjY5MiAzMC4zOTIsMzkuMzQ2IDMwLjM5MiwzNy42OTIgTDMwLjM5MiwzNy42OTIgWiBNMzIuMzkyLDM3LjY5MiBDMzIuMzkyLDQwLjQ0OSAzMC4xNDgsNDIuNjkyIDI3LjM5Miw0Mi42OTIgQzI0LjYzNSw0Mi42OTIgMjIuMzkyLDQwLjQ0OSAyMi4zOTIsMzcuNjkyIEMyMi4zOTIsMzQuOTM1IDI0LjYzNSwzMi42OTIgMjcuMzkyLDMyLjY5MiBDMzAuMTQ4LDMyLjY5MiAzMi4zOTIsMzQuOTM1IDMyLjM5MiwzNy42OTIgTDMyLjM5MiwzNy42OTIgWiBNMzkuNzMsMjIuMDA3IEMzOS43MywyMy42NjEgNDEuMDc2LDI1LjAwNyA0Mi43MywyNS4wMDcgQzQ0LjM4NSwyNS4wMDcgNDUuNzMsMjMuNjYxIDQ1LjczLDIyLjAwNyBDNDUuNzMsMjAuMzUyIDQ0LjM4NSwxOS4wMDcgNDIuNzMsMTkuMDA3IEM0MS4wNzYsMTkuMDA3IDM5LjczLDIwLjM1MiAzOS43MywyMi4wMDcgTDM5LjczLDIyLjAwNyBaIE0zNy43MywyMi4wMDcgQzM3LjczLDE5LjI1IDM5Ljk3NCwxNy4wMDcgNDIuNzMsMTcuMDA3IEM0NS40ODcsMTcuMDA3IDQ3LjczLDE5LjI1IDQ3LjczLDIyLjAwNyBDNDcuNzMsMjQuNzY0IDQ1LjQ4NywyNy4wMDcgNDIuNzMsMjcuMDA3IEMzOS45NzQsMjcuMDA3IDM3LjczLDI0Ljc2NCAzNy43MywyMi4wMDcgTDM3LjczLDIyLjAwNyBaIE02Niw0MCBDNjYsMzAuNzI3IDYxLjAyOCwyMi4xNDggNTMuMDEyLDE3LjUwOSBDNTEuNTc1LDE3Ljc5OSA1MC4xODUsMTguMTk2IDQ4LjQ1MSwxOC44MjMgTDQ3Ljc3MSwxNi45NDIgQzQ4LjY3NiwxNi42MTYgNDkuNDg2LDE2LjM1MiA1MC4yNjYsMTYuMTI2IEM0Ny4wNDYsMTQuNzM3IDQzLjU0OCwxNCA0MCwxNCBDMzguMzExLDE0IDM2LjY0OSwxNC4xNzUgMzUuMDI1LDE0LjQ5MiBDMzYuMjAxLDE1LjE4IDM3LjI0NCwxNS44NjYgMzguMjU3LDE2LjYzNCBMMzcuMDQ4LDE4LjIyNyBDMzUuNjIsMTcuMTQ1IDM0LjE0LDE2LjIyOCAzMi4xOTcsMTUuMjEgQzIyLjM3OCwxOC4yOTggMTUuMzA2LDI2Ljk1OCAxNC4xODMsMzcuMTI4IEMxNi4yNDIsMzYuNzExIDE4LjIxOSwzNi40ODQgMjAuNDE0LDM2LjQzIEwyMC40NjMsMzguNDI5IEMxOC4xNjMsMzguNDg2IDE2LjE4NywzOC43MyAxNC4wMjcsMzkuMjA1IEMxNC4wMTgsMzkuNDcgMTQsMzkuNzM4IDE0LDQwIEMxNCw0OC42NTggMTguMjgzLDU2LjYzNiAyNS4zMjcsNjEuNDQ3IEMyNC4wNzQsNTcuNzE2IDIzLjQ1LDU0LjE5IDIzLjQ1LDUwLjc0NiBDMjMuNDUsNDguNzgyIDIzLjc4OCw0Ny4xNjkgMjQuMTQ1LDQ1LjQ2MiBDMjQuMjI4LDQ1LjA2NyAyNC4zMTIsNDQuNjY1IDI0LjM5NCw0NC4yNDggTDI2LjM1Nyw0NC42MzUgQzI2LjI3Myw0NS4wNTkgMjYuMTg3LDQ1LjQ3IDI2LjEwMyw0NS44NzMgQzI1Ljc1Myw0Ny41NDUgMjUuNDUsNDguOTg5IDI1LjQ1LDUwLjc0NiBDMjUuNDUsNTQuNjU0IDI2LjMwOCw1OC42OTUgMjguMDU0LDYzLjA4MyBDMzEuNzczLDY1LjAxNCAzNS43ODksNjYgNDAsNjYgQzQyLjc1Niw2NiA0NS40NDYsNjUuNTYgNDguMDEyLDY0LjcxNCBDNDkuMDE5LDYyLjcyNyA0OS43NjYsNjAuODUyIDUwLjM5LDU4LjY5OSBMNTIuMzExLDU5LjI1NiBDNTEuODU1LDYwLjgyNiA1MS4zMzIsNjIuMjUzIDUwLjcwOSw2My42NzcgQzUyLjMyMyw2Mi45NTEgNTMuODUsNjIuMDUzIDU1LjI4Myw2MS4wMDUgQzU0LjkzOCw2MC4xNTkgNTQuNTY4LDU5LjMxOCA1NC4xNTksNTguNDk5IEw1NS45NDgsNTcuNjA0IEM1Ni4yOTYsNTguMyA1Ni42MTUsNTkuMDEyIDU2LjkyLDU5LjcyOCBDNjIuNzA1LDU0Ljc3NSA2Niw0Ny42NiA2Niw0MCBMNjYsNDAgWiBNNjgsNDAgQzY4LDQ4LjcyNyA2NC4wMzQsNTYuNzk5IDU3LjEyMSw2Mi4xNDkgQzU1LjQwOSw2My40NzkgNTMuNTUyLDY0LjU4MyA1MS41ODksNjUuNDcyIEM1MC43NTYsNjUuODUgNDkuOTA4LDY2LjIgNDkuMDM2LDY2LjQ5NCBDNDYuMTU2LDY3LjQ5MyA0My4xMTMsNjggNDAsNjggQzM1LjQsNjggMzAuODMyLDY2Ljg1NCAyNi43ODgsNjQuNjg2IEMxNy42NjcsNTkuODA2IDEyLDUwLjM0NyAxMiw0MCBDMTIsMzkuMzE0IDEyLjAxOCwzOC43OTIgMTIuMDU5LDM4LjMwOSBDMTIuNzQsMjYuNjI1IDIwLjc1NiwxNi41MTIgMzIuMDAxLDEzLjE2NiBDMzQuNTYyLDEyLjM5MyAzNy4yNTUsMTIgNDAsMTIgQzQ0LjgwOCwxMiA0OS41MzksMTMuMjM4IDUzLjY4NCwxNS41NzkgQzYyLjUxMywyMC41MjUgNjgsMjkuODg0IDY4LDQwIEw2OCw0MCBaIE0zNy4zMTQsMjUuNDYzIEwzNiwyMy45NTYgQzMzLjc1OCwyNS45MTIgMzIuMDE0LDI3Ljk4OSAyOS45NzcsMzEuMTI2IEwzMS42NTUsMzIuMjE1IEMzMy41ODMsMjkuMjQ0IDM1LjIyMywyNy4yODggMzcuMzE0LDI1LjQ2MyBMMzcuMzE0LDI1LjQ2MyBaIE0zNC4yNzUsMzguNDI3IEwzMy42MjUsNDAuMzE4IEMzOC4yMTgsNDEuODk1IDQyLjIyNSw0NC40MTEgNDYuMjM0LDQ4LjIzNiBMNDcuNjE1LDQ2Ljc4OSBDNDMuMzg5LDQyLjc1OCAzOS4xNSw0MC4xMDEgMzQuMjc1LDM4LjQyNyBMMzQuMjc1LDM4LjQyNyBaIE00Ny42NDYsMjYuNjY4IEM1MS4zOTgsMzIuMzkgNTMuNTExLDM4LjY3MSA1My45MjUsNDUuMzM4IEw1MS45MjksNDUuNDYyIEM1MS41MzYsMzkuMTQ2IDQ5LjUzMywzMy4xOTIgNDUuOTc1LDI3Ljc2NSBMNDcuNjQ2LDI2LjY2OCBaIiBpZD0iQW1hem9uLUNsb3VkRnJvbnRfSWNvbl82NF9TcXVpZCIgZmlsbD0iI0ZGRkZGRiI+PC9wYXRoPgogICAgPC9nPgo8L3N2Zz4=',
+  s3: 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB3aWR0aD0iODBweCIgaGVpZ2h0PSI4MHB4IiB2aWV3Qm94PSIwIDAgODAgODAiIHZlcnNpb249IjEuMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayI+CiAgICA8dGl0bGU+SWNvbi1BcmNoaXRlY3R1cmUvNjQvQXJjaF9BbWF6b24tU2ltcGxlLVN0b3JhZ2UtU2VydmljZV82NDwvdGl0bGU+CiAgICA8ZGVmcz4KICAgICAgICA8bGluZWFyR3JhZGllbnQgeDE9IjAlIiB5MT0iMTAwJSIgeDI9IjEwMCUiIHkyPSIwJSIgaWQ9ImxpbmVhckdyYWRpZW50LTEiPgogICAgICAgICAgICA8c3RvcCBzdG9wLWNvbG9yPSIjMUI2NjBGIiBvZmZzZXQ9IjAlIj48L3N0b3A+CiAgICAgICAgICAgIDxzdG9wIHN0b3AtY29sb3I9IiM2Q0FFM0UiIG9mZnNldD0iMTAwJSI+PC9zdG9wPgogICAgICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICA8L2RlZnM+CiAgICA8ZyBpZD0iSWNvbi1BcmNoaXRlY3R1cmUvNjQvQXJjaF9BbWF6b24tU2ltcGxlLVN0b3JhZ2UtU2VydmljZV82NCIgc3Ryb2tlPSJub25lIiBzdHJva2Utd2lkdGg9IjEiIGZpbGw9Im5vbmUiIGZpbGwtcnVsZT0iZXZlbm9kZCI+CiAgICAgICAgPGcgaWQ9IlJlY3RhbmdsZSIgZmlsbD0idXJsKCNsaW5lYXJHcmFkaWVudC0xKSI+CiAgICAgICAgICAgIDxyZWN0IHg9IjAiIHk9IjAiIHdpZHRoPSI4MCIgaGVpZ2h0PSI4MCI+PC9yZWN0PgogICAgICAgIDwvZz4KICAgICAgICA8ZyBpZD0iSWNvbi1TZXJ2aWNlLzY0L0FtYXpvbi1TaW1wbGUtU3RvcmFnZS1TZXJ2aWNlXzY0IiB0cmFuc2Zvcm09InRyYW5zbGF0ZSg4LjAwMDAwMCwgOC4wMDAwMDApIiBmaWxsPSIjRkZGRkZGIj4KICAgICAgICAgICAgPHBhdGggZD0iTTUyLjgzNTksMzQuODkyNiBMNTMuMjE5OSwzMi4xODg2IEM1Ni43NjA5LDM0LjMwOTYgNTYuODA2OSwzNS4xODU2IDU2LjgwNTkxMzIsMzUuMjA5NiBDNTYuNzk5OSwzNS4yMTQ2IDU2LjE5NTksMzUuNzE4NiA1Mi44MzU5LDM0Ljg5MjYgTDUyLjgzNTksMzQuODkyNiBaIE01MC44OTI5LDM0LjM1MjYgQzQ0Ljc3MjksMzIuNTAwNiAzNi4yNDk5LDI4LjU5MDYgMzIuODAwOSwyNi45NjA2IEMzMi44MDA5LDI2Ljk0NjYgMzIuODA0OSwyNi45MzM2IDMyLjgwNDksMjYuOTE5NiBDMzIuODA0OSwyNS41OTQ2IDMxLjcyNjksMjQuNTE2NiAzMC40MDA5LDI0LjUxNjYgQzI5LjA3NjksMjQuNTE2NiAyNy45OTg5LDI1LjU5NDYgMjcuOTk4OSwyNi45MTk2IEMyNy45OTg5LDI4LjI0NDYgMjkuMDc2OSwyOS4zMjI2IDMwLjQwMDksMjkuMzIyNiBDMzAuOTgyOSwyOS4zMjI2IDMxLjUxMDksMjkuMTA1NiAzMS45Mjc5LDI4Ljc2MDYgQzM1Ljk4NTksMzAuNjgxNiA0NC40NDI5LDM0LjUzNDYgNTAuNjA3OSwzNi4zNTQ2IEw0OC4xNjk5LDUzLjU2MDYgQzQ4LjE2MjksNTMuNjA3NiA0OC4xNTk5LDUzLjY1NDYgNDguMTU5OSw1My43MDE2IEM0OC4xNTk5LDU1LjIxNjYgNDEuNDUyOSw1Ny45OTk2IDMwLjQ5MzksNTcuOTk5NiBDMTkuNDE4OSw1Ny45OTk2IDEyLjY0MDksNTUuMjE2NiAxMi42NDA5LDUzLjcwMTYgQzEyLjY0MDksNTMuNjU1NiAxMi42Mzc5LDUzLjYxMDYgMTIuNjMxOSw1My41NjU2IEw3LjUzNzksMTYuMzU4NiBDMTEuOTQ2OSwxOS4zOTM2IDIxLjQyOTksMjAuOTk5NiAzMC40OTk5LDIwLjk5OTYgQzM5LjU1NTksMjAuOTk5NiA0OS4wMjI5LDE5LjM5OTYgNTMuNDQwOSwxNi4zNzM2IEw1MC44OTI5LDM0LjM1MjYgWiBNNi45OTk5LDEyLjQ3NzYgQzcuMDcxOSwxMS4xNjE2IDE0LjYzMzksNS45OTk2IDMwLjQ5OTksNS45OTk2IEM0Ni4zNjM5LDUuOTk5NiA1My45MjY5LDExLjE2MDYgNTMuOTk5OSwxMi40Nzc2IEw1My45OTk5LDEyLjkyNjYgQzUzLjEyOTksMTUuODc3NiA0My4zMjk5LDE4Ljk5OTYgMzAuNDk5OSwxOC45OTk2IEMxNy42NDc5LDE4Ljk5OTYgNy44NDI5LDE1Ljg2NzYgNi45OTk5LDEyLjkxMjYgTDYuOTk5OSwxMi40Nzc2IFogTTU1Ljk5OTksMTIuNDk5NiBDNTUuOTk5OSw5LjAzNDYgNDYuMDY1OSwzLjk5OTYgMzAuNDk5OSwzLjk5OTYgQzE0LjkzMzksMy45OTk2IDQuOTk5OSw5LjAzNDYgNC45OTk5LDEyLjQ5OTYgTDUuMDkzOSwxMy4yNTM2IEwxMC42NDE5LDUzLjc3NzYgQzEwLjc3NDksNTguMzA5NiAyMi44NjA5LDU5Ljk5OTYgMzAuNDkzOSw1OS45OTk2IEMzOS45NjU5LDU5Ljk5OTYgNTAuMDI4OSw1Ny44MjE2IDUwLjE1ODksNTMuNzgwNiBMNTIuNTU0OSwzNi44ODM2IEM1My44ODc5LDM3LjIwMjYgNTQuOTg0OSwzNy4zNjU2IDU1Ljg2NTksMzcuMzY1NiBDNTcuMDQ4OSwzNy4zNjU2IDU3Ljg0ODksMzcuMDc2NiA1OC4zMzM5LDM2LjQ5ODYgQzU4LjczMTksMzYuMDI0NiA1OC44ODM5LDM1LjQ1MDYgNTguNzY5OSwzNC44Mzk2IEM1OC41MTA5LDMzLjQ1NTYgNTYuODY3OSwzMS45NjM2IDUzLjUyMTksMzAuMDU0NiBMNTUuODk3OSwxMy4yOTI2IEw1NS45OTk5LDEyLjQ5OTYgWiIgaWQ9IkFtYXpvbi1TaW1wbGUtU3RvcmFnZS1TZXJ2aWNlLUljb25fNjRfU3F1aWQiPjwvcGF0aD4KICAgICAgICA8L2c+CiAgICA8L2c+Cjwvc3ZnPg==',
+  alb: 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB3aWR0aD0iODBweCIgaGVpZ2h0PSI4MHB4IiB2aWV3Qm94PSIwIDAgODAgODAiIHZlcnNpb249IjEuMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayI+CiAgICA8IS0tIEdlbmVyYXRvcjogU2tldGNoIDY0ICg5MzUzNykgLSBodHRwczovL3NrZXRjaC5jb20gLS0+CiAgICA8dGl0bGU+SWNvbi1BcmNoaXRlY3R1cmUvNjQvQXJjaF9FbGFzdGljLUxvYWQtQmFsYW5jaW5nXzY0PC90aXRsZT4KICAgIDxkZXNjPkNyZWF0ZWQgd2l0aCBTa2V0Y2guPC9kZXNjPgogICAgPGRlZnM+CiAgICAgICAgPGxpbmVhckdyYWRpZW50IHgxPSIwJSIgeTE9IjEwMCUiIHgyPSIxMDAlIiB5Mj0iMCUiIGlkPSJsaW5lYXJHcmFkaWVudC0xIj4KICAgICAgICAgICAgPHN0b3Agc3RvcC1jb2xvcj0iIzREMjdBOCIgb2Zmc2V0PSIwJSI+PC9zdG9wPgogICAgICAgICAgICA8c3RvcCBzdG9wLWNvbG9yPSIjQTE2NkZGIiBvZmZzZXQ9IjEwMCUiPjwvc3RvcD4KICAgICAgICA8L2xpbmVhckdyYWRpZW50PgogICAgPC9kZWZzPgogICAgPGcgaWQ9Ikljb24tQXJjaGl0ZWN0dXJlLzY0L0FyY2hfRWxhc3RpYy1Mb2FkLUJhbGFuY2luZ182NCIgc3Ryb2tlPSJub25lIiBzdHJva2Utd2lkdGg9IjEiIGZpbGw9Im5vbmUiIGZpbGwtcnVsZT0iZXZlbm9kZCI+CiAgICAgICAgPGcgaWQ9Ikljb24tQXJjaGl0ZWN0dXJlLUJHLzY0L05ldHdvcmtpbmctQ29udGVudC1EZWxpdmVyeSIgZmlsbD0idXJsKCNsaW5lYXJHcmFkaWVudC0xKSI+CiAgICAgICAgICAgIDxyZWN0IGlkPSJSZWN0YW5nbGUiIHg9IjAiIHk9IjAiIHdpZHRoPSI4MCIgaGVpZ2h0PSI4MCI+PC9yZWN0PgogICAgICAgIDwvZz4KICAgICAgICA8cGF0aCBkPSJNMzAsNTMgQzIyLjgzMiw1MyAxNyw0Ny4xNjggMTcsNDAgQzE3LDMyLjgzMiAyMi44MzIsMjcgMzAsMjcgQzM3LjE2OCwyNyA0MywzMi44MzIgNDMsNDAgQzQzLDQ3LjE2OCAzNy4xNjgsNTMgMzAsNTMgTTYwLDU5IEM2MCw2MS4yMDYgNTguMjA2LDYzIDU2LDYzIEM1My43OTQsNjMgNTIsNjEuMjA2IDUyLDU5IEM1Miw1Ni43OTQgNTMuNzk0LDU1IDU2LDU1IEM1OC4yMDYsNTUgNjAsNTYuNzk0IDYwLDU5IE01NiwxNyBDNTguMjA2LDE3IDYwLDE4Ljc5NCA2MCwyMSBDNjAsMjMuMjA2IDU4LjIwNiwyNSA1NiwyNSBDNTMuNzk0LDI1IDUyLDIzLjIwNiA1MiwyMSBDNTIsMTguNzk0IDUzLjc5NCwxNyA1NiwxNyBNNTksMzYgQzYxLjIwNiwzNiA2MywzNy43OTQgNjMsNDAgQzYzLDQyLjIwNiA2MS4yMDYsNDQgNTksNDQgQzU2Ljc5NCw0NCA1NSw0Mi4yMDYgNTUsNDAgQzU1LDM3Ljc5NCA1Ni43OTQsMzYgNTksMzYgTTQ0Ljk0OSw0MSBMNTMuMDksNDEgQzUzLjU2OCw0My44MzMgNTYuMDMzLDQ2IDU5LDQ2IEM2Mi4zMDksNDYgNjUsNDMuMzA5IDY1LDQwIEM2NSwzNi42OTEgNjIuMzA5LDM0IDU5LDM0IEM1Ni4wMzMsMzQgNTMuNTY4LDM2LjE2NyA1My4wOSwzOSBMNDQuOTQ5LDM5IEM0NC44MjMsMzcuMDk5IDQ0LjM0NCwzNS4yOTcgNDMuNTcyLDMzLjY1NCBMNTIuNDQ2LDI1LjgyMyBDNTMuNDQyLDI2LjU1OSA1NC42NjksMjcgNTYsMjcgQzU5LjMwOSwyNyA2MiwyNC4zMDkgNjIsMjEgQzYyLDE3LjY5MSA1OS4zMDksMTUgNTYsMTUgQzUyLjY5MSwxNSA1MCwxNy42OTEgNTAsMjEgQzUwLDIyLjI1NiA1MC4zODksMjMuNDIxIDUxLjA1MSwyNC4zODYgTDQyLjU4MSwzMS44NTkgQzM5LjkwNCwyNy43MzggMzUuMjcxLDI1IDMwLDI1IEMyMS43MjksMjUgMTUsMzEuNzI5IDE1LDQwIEMxNSw0OC4yNzEgMjEuNzI5LDU1IDMwLDU1IEMzNS4yNzEsNTUgMzkuOTA0LDUyLjI2MiA0Mi41ODEsNDguMTQxIEw1MS4wNTEsNTUuNjE0IEM1MC4zODksNTYuNTc5IDUwLDU3Ljc0NCA1MCw1OSBDNTAsNjIuMzA5IDUyLjY5MSw2NSA1Niw2NSBDNTkuMzA5LDY1IDYyLDYyLjMwOSA2Miw1OSBDNjIsNTUuNjkxIDU5LjMwOSw1MyA1Niw1MyBDNTQuNjY5LDUzIDUzLjQ0Miw1My40NDEgNTIuNDQ2LDU0LjE3NyBMNDMuNTcyLDQ2LjM0NiBDNDQuMzQ0LDQ0LjcwMyA0NC44MjMsNDIuOTAxIDQ0Ljk0OSw0MSIgaWQ9IkVsYXN0aWMtTG9hZC1CYWxhbmNpbmdfSWNvbl82NF9TcXVpZCIgZmlsbD0iI0ZGRkZGRiI+PC9wYXRoPgogICAgPC9nPgo8L3N2Zz4=',
+  apigw: 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB3aWR0aD0iODBweCIgaGVpZ2h0PSI4MHB4IiB2aWV3Qm94PSIwIDAgODAgODAiIHZlcnNpb249IjEuMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayI+CiAgICA8dGl0bGU+SWNvbi1BcmNoaXRlY3R1cmUvNjQvQXJjaF8gQW1hem9uLUFQSS1HYXRld2F5XzY0PC90aXRsZT4KICAgIDxkZWZzPgogICAgICAgIDxsaW5lYXJHcmFkaWVudCB4MT0iMCUiIHkxPSIxMDAlIiB4Mj0iMTAwJSIgeTI9IjAlIiBpZD0ibGluZWFyR3JhZGllbnQtMSI+CiAgICAgICAgICAgIDxzdG9wIHN0b3AtY29sb3I9IiNCMDA4NEQiIG9mZnNldD0iMCUiPjwvc3RvcD4KICAgICAgICAgICAgPHN0b3Agc3RvcC1jb2xvcj0iI0ZGNEY4QiIgb2Zmc2V0PSIxMDAlIj48L3N0b3A+CiAgICAgICAgPC9saW5lYXJHcmFkaWVudD4KICAgIDwvZGVmcz4KICAgIDxnIGlkPSJJY29uLUFyY2hpdGVjdHVyZS82NC9BcmNoXy1BbWF6b24tQVBJLUdhdGV3YXlfNjQiIHN0cm9rZT0ibm9uZSIgc3Ryb2tlLXdpZHRoPSIxIiBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPgogICAgICAgIDxnIGlkPSJSZWN0YW5nbGUiIGZpbGw9InVybCgjbGluZWFyR3JhZGllbnQtMSkiPgogICAgICAgICAgICA8cmVjdCB4PSIwIiB5PSIwIiB3aWR0aD0iODAiIGhlaWdodD0iODAiPjwvcmVjdD4KICAgICAgICA8L2c+CiAgICAgICAgPGcgaWQ9Ikljb24tU2VydmljZS82NC9BbWF6b24tQVBJLUdhdGV3YXlfNjQiIHRyYW5zZm9ybT0idHJhbnNsYXRlKDguMDAwMDAwLCA4LjAwMDAwMCkiIGZpbGw9IiNGRkZGRkYiPgogICAgICAgICAgICA8cGF0aCBkPSJNMjYuMDY1LDQ3LjYzMjM2NDIgTDI5LDQ3LjYzMjM2NDIgTDI5LDQ1LjYxNTI5ODkgTDI2LjA2NSw0NS42MTUyOTg5IEwyNi4wNjUsNDcuNjMyMzY0MiBaIE0zMSw0Ny42MzIzNjQyIEwzNCw0Ny42MzIzNjQyIEwzNCw0NS42MTUyOTg5IEwzMSw0NS42MTUyOTg5IEwzMSw0Ny42MzIzNjQyIFogTTE5LDYuNjI5NDYxMTIgTDYsMTMuMDgyMDUzIEw2LDUzLjE5MzQxMzIgTDE5LDU3LjU4OTYwNyBMMTksNi42Mjk0NjExMiBaIE0yMSwxOS4zOTM0NTAyIEwyMSw0NS42MTUyOTg5IEwyNCw0NS42MTUyOTg5IEwyNCw0Ny42MzIzNjQyIEwyMSw0Ny42MzIzNjQyIEwyMSw1OC45OTE0Njc0IEMyMSw1OS4zMTYyMTQ5IDIwLjg0NSw1OS42MjA3OTE3IDIwLjU4NCw1OS44MTAzOTU5IEMyMC40MTIsNTkuOTM1NDUzOSAyMC4yMDcsNjAgMjAsNjAgQzE5Ljg5NCw2MCAxOS43ODYsNTkuOTgyODU0OSAxOS42ODIsNTkuOTQ3NTU2MyBMNC42ODIsNTQuODc1NjQ1NiBDNC4yNzQsNTQuNzM3NDc2NyA0LDU0LjM1MjIxNzIgNCw1My45MTk1NTY3IEw0LDEyLjQ1MzczNzEgQzQsMTIuMDcwNDk0NyA0LjIxNywxMS43MTg1MTY4IDQuNTU5LDExLjU0OTA4MzMgTDE5LjU1OSw0LjEwNDA5NTM5IEMxOS44NjgsMy45NDk3ODk4OSAyMC4yMzUsMy45Njc5NDM0OCAyMC41MjgsNC4xNTI1MDQ5NSBDMjAuODIxLDQuMzM2MDU3ODkgMjEsNC42NTk3OTY4NyAyMSw1LjAwODc0OTE3IEwyMSwxNy4zNzYzODUgTDI0LDE3LjM3NjM4NSBMMjQsMTkuMzkzNDUwMiBMMjEsMTkuMzkzNDUwMiBaIE0zNiw0Ny42MzIzNjQyIEwzOSw0Ny42MzIzNjQyIEwzOSw0NS42MTUyOTg5IEwzNiw0NS42MTUyOTg5IEwzNiw0Ny42MzIzNjQyIFogTTM2LjA2NSwxOS4zOTM0NTAyIEwzOSwxOS4zOTM0NTAyIEwzOSwxNy4zNzYzODUgTDM2LjA2NSwxNy4zNzYzODUgTDM2LjA2NSwxOS4zOTM0NTAyIFogTTMxLjA2NSwxOS4zOTM0NTAyIEwzNCwxOS4zOTM0NTAyIEwzNCwxNy4zNzYzODUgTDMxLjA2NSwxNy4zNzYzODUgTDMxLjA2NSwxOS4zOTM0NTAyIFogTTI2LjA2NSwxOS4zOTM0NTAyIEwyOSwxOS4zOTM0NTAyIEwyOSwxNy4zNzYzODUgTDI2LjA2NSwxNy4zNzYzODUgTDI2LjA2NSwxOS4zOTM0NTAyIFogTTU4LDEzLjA4MjA1MyBMNDUsNi42Mjk0NjExMiBMNDUsNTcuNTg5NjA3IEw1OCw1My4xOTM0MTMyIEw1OCwxMy4wODIwNTMgWiBNNjAsNTMuOTE5NTU2NyBDNjAsNTQuMzUyMjE3MiA1OS43MjYsNTQuNzM3NDc2NyA1OS4zMTgsNTQuODc1NjQ1NiBMNDQuMzE4LDU5Ljk0NzU1NjMgQzQ0LjIxNCw1OS45ODI4NTQ5IDQ0LjEwNiw2MCA0NCw2MCBDNDMuNzkzLDYwIDQzLjU4OCw1OS45MzU0NTM5IDQzLjQxNiw1OS44MTAzOTU5IEM0My4xNTUsNTkuNjIwNzkxNyA0Myw1OS4zMTYyMTQ5IDQzLDU4Ljk5MTQ2NzQgTDQzLDQ3LjYzMjM2NDIgTDQxLjA2NSw0Ny42MzIzNjQyIEw0MS4wNjUsNDUuNjE1Mjk4OSBMNDMsNDUuNjE1Mjk4OSBMNDMsMTkuMzkzNDUwMiBMNDEuMDY1LDE5LjM5MzQ1MDIgTDQxLjA2NSwxNy4zNzYzODUgTDQzLDE3LjM3NjM4NSBMNDMsNS4wMDg3NDkxNyBDNDMsNC42NTk3OTY4NyA0My4xNzksNC4zMzYwNTc4OSA0My40NzIsNC4xNTI1MDQ5NSBDNDMuNzY1LDMuOTY3OTQzNDggNDQuMTMxLDMuOTQ5Nzg5ODkgNDQuNDQxLDQuMTA0MDk1MzkgTDU5LjQ0MSwxMS41NDkwODMzIEM1OS43ODMsMTEuNzE4NTE2OCA2MCwxMi4wNzA0OTQ3IDYwLDEyLjQ1MzczNzEgTDYwLDUzLjkxOTU1NjcgWiBNMzQuOTM0LDI1LjgwNjcwOTMgTDMzLjA2NiwyNS4wODI1ODI5IEwyOC4wNjYsMzguMTkzNTA3MiBMMjkuOTM0LDM4LjkxNzYzMzcgTDM0LjkzNCwyNS44MDY3MDkzIFogTTQxLjcwNywzMi4yMDg4NzQ1IEM0Mi4wOTgsMzEuODE0NTM4MyA0Mi4wOTgsMzEuMTc2MTM3MSA0MS43MDcsMzAuNzgyODA5NCBMMzcuNzA3LDI2Ljc0ODY3ODggTDM2LjI5MywyOC4xNzQ3NDQgTDM5LjU4NiwzMS40OTU4NDE5IEwzNi4yOTMsMzQuODE2OTM5OSBMMzcuNzA3LDM2LjI0MzAwNTEgTDQxLjcwNywzMi4yMDg4NzQ1IFogTTI2LjI5MywzNi4yNDMwMDUxIEwyMi4yOTMsMzIuMjA4ODc0NSBDMjEuOTAyLDMxLjgxNDUzODMgMjEuOTAyLDMxLjE3NjEzNzEgMjIuMjkzLDMwLjc4MjgwOTQgTDI2LjI5MywyNi43NDg2Nzg4IEwyNy43MDcsMjguMTc0NzQ0IEwyNC40MTQsMzEuNDk1ODQxOSBMMjcuNzA3LDM0LjgxNjkzOTkgTDI2LjI5MywzNi4yNDMwMDUxIFoiIGlkPSJBbWF6b24tQVBJLUdhdGV3YXlfSWNvbl82NF9TcXVpZCI+PC9wYXRoPgogICAgICAgIDwvZz4KICAgIDwvZz4KPC9zdmc+',
+  eks: 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB3aWR0aD0iODBweCIgaGVpZ2h0PSI4MHB4IiB2aWV3Qm94PSIwIDAgODAgODAiIHZlcnNpb249IjEuMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayI+CiAgICA8IS0tIEdlbmVyYXRvcjogU2tldGNoIDY0ICg5MzUzNykgLSBodHRwczovL3NrZXRjaC5jb20gLS0+CiAgICA8dGl0bGU+SWNvbi1BcmNoaXRlY3R1cmUvNjQvQXJjaF9BbWF6b24tRWxhc3RpYy1Db250YWluZXItS3ViZXJuZXRlc182NDwvdGl0bGU+CiAgICA8ZGVzYz5DcmVhdGVkIHdpdGggU2tldGNoLjwvZGVzYz4KICAgIDxkZWZzPgogICAgICAgIDxsaW5lYXJHcmFkaWVudCB4MT0iMCUiIHkxPSIxMDAlIiB4Mj0iMTAwJSIgeTI9IjAlIiBpZD0ibGluZWFyR3JhZGllbnQtMSI+CiAgICAgICAgICAgIDxzdG9wIHN0b3AtY29sb3I9IiNDODUxMUIiIG9mZnNldD0iMCUiPjwvc3RvcD4KICAgICAgICAgICAgPHN0b3Agc3RvcC1jb2xvcj0iI0ZGOTkwMCIgb2Zmc2V0PSIxMDAlIj48L3N0b3A+CiAgICAgICAgPC9saW5lYXJHcmFkaWVudD4KICAgIDwvZGVmcz4KICAgIDxnIGlkPSJJY29uLUFyY2hpdGVjdHVyZS82NC9BcmNoX0FtYXpvbi1FbGFzdGljLUNvbnRhaW5lci1LdWJlcm5ldGVzXzY0IiBzdHJva2U9Im5vbmUiIHN0cm9rZS13aWR0aD0iMSIgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIj4KICAgICAgICA8ZyBpZD0iSWNvbi1BcmNoaXRlY3R1cmUtQkcvNjQvQ29udGFpbmVycyIgZmlsbD0idXJsKCNsaW5lYXJHcmFkaWVudC0xKSI+CiAgICAgICAgICAgIDxyZWN0IGlkPSJSZWN0YW5nbGUiIHg9IjAiIHk9IjAiIHdpZHRoPSI4MCIgaGVpZ2h0PSI4MCI+PC9yZWN0PgogICAgICAgIDwvZz4KICAgICAgICA8cGF0aCBkPSJNNDYuODQyLDMyLjE5OTAxNjggTDQwLjAxMyw0MC4xMjAwMTMyIEw0Ny40NDEsNDguNzg0MDA5MiBMNDQuNjY5LDQ4Ljc4NDAwOTIgTDM4LDQxLjAwMDAxNjkgTDM4LDQ5LjAwMDAxNjkgTDM2LDQ5LjAwMDAxNjkgTDM2LDMyLjAwMDAxNjkgTDM4LDMyLjAwMDAxNjkgTDM4LDM5LjAwMDAxNjkgTDQ0LjE4MSwzMi4xOTkwMTY4IEw0Ni44NDIsMzIuMTk5MDE2OCBaIE02NCw0OC4yMzQwMDk1IEw1Niw0My40MzMwMTE3IEw1NiwzMi4wMDAwMTY5IEM1NiwzMS42NDQwMTcxIDU1LjgxMiwzMS4zMTUwMTcyIDU1LjUwNCwzMS4xMzYwMTczIEw0NCwyNC40MjYwMjA0IEw0NCwxNC43NTIwMjQ4IEw2NCwyNi41NzEwMTk0IEw2NCw0OC4yMzQwMDk1IFogTTY1LjUwOSwyNS4xMzkwMiBMNDMuNTA5LDEyLjEzOTAyNiBDNDMuMTk5LDExLjk1NjAyNjEgNDIuODE4LDExLjk1NDAyNjEgNDIuNTA0LDEyLjEzMTAyNiBDNDIuMTkzLDEyLjMwOTAyNTkgNDIsMTIuNjQxMDI1NyA0MiwxMy4wMDAwMjU2IEw0MiwyNS4wMDAwMjAxIEM0MiwyNS4zNTUwMTk5IDQyLjE4OSwyNS42ODQwMTk4IDQyLjQ5NiwyNS44NjQwMTk3IEw1NCwzMi41NzQwMTY2IEw1NCw0NC4wMDAwMTE0IEM1NCw0NC4zNTEwMTEzIDU0LjE4NSw0NC42NzcwMTExIDU0LjQ4Niw0NC44NTcwMTEgTDY0LjQ4Niw1MC44NTcwMDgzIEM2NC42NDQsNTAuOTUyMDA4MiA2NC44MjIsNTEgNjUsNTEgQzY1LjE3LDUxIDY1LjM0LDUwLjk1NzAwODIgNjUuNDkzLDUwLjg3MDAwODMgQzY1LjgwNyw1MC42OTMwMDg0IDY2LDUwLjM2MDAwODUgNjYsNTAgTDY2LDI2LjAwMDAxOTYgQzY2LDI1LjY0NjAxOTggNjUuODE0LDI1LjMxOTAyIDY1LjUwOSwyNS4xMzkwMiBMNjUuNTA5LDI1LjEzOTAyIFogTTQwLjQ0NSw2Ni44NjMwMDEgTDE3LDU0LjM5OTAwNjcgTDE3LDI2LjU3MTAxOTQgTDM3LDE0Ljc1MjAyNDggTDM3LDI0LjQ1MTAyMDQgTDI2LjQ2MywzMS4xNTYwMTczIEMyNi4xNzUsMzEuMzQwMDE3MiAyNiwzMS42NTgwMTcxIDI2LDMyLjAwMDAxNjkgTDI2LDQ5LjAwMDAwOTEgQzI2LDQ5LjM3MzAwOSAyNi4yMDgsNDkuNzE1MDA4OCAyNi41MzgsNDkuODg3MDA4NyBMMzkuOTkxLDU2Ljg4NzAwNTUgQzQwLjI4LDU3LjAzNzAwNTUgNDAuNjI0LDU3LjAzODAwNTUgNDAuOTEyLDU2Ljg4ODAwNTUgTDUzLjk2NCw1MC4xNDQwMDg2IEw2MS45OTYsNTQuOTY0MDA2NCBMNDAuNDQ1LDY2Ljg2MzAwMSBaIE02NC41MTUsNTQuMTQyMDA2OCBMNTQuNTE1LDQ4LjE0MjAwOTUgQzU0LjIxNyw0Ny45NjQwMDk2IDUzLjg0OSw0Ny45NTIwMDk2IDUzLjU0MSw0OC4xMTIwMDk1IEw0MC40NTUsNTQuODczMDA2NSBMMjgsNDguMzkzMDA5NCBMMjgsMzIuNTQ5MDE2NyBMMzguNTM3LDI1Ljg0NDAxOTcgQzM4LjgyNSwyNS42NjAwMTk4IDM5LDI1LjM0MjAxOTkgMzksMjUuMDAwMDIwMSBMMzksMTMuMDAwMDI1NiBDMzksMTIuNjQxMDI1NyAzOC44MDgsMTIuMzA5MDI1OSAzOC40OTYsMTIuMTMxMDI2IEMzOC4xODQsMTEuOTU0MDI2MSAzNy44MDIsMTEuOTU2MDI2MSAzNy40OTEsMTIuMTM5MDI2IEwxNS40OTEsMjUuMTM5MDIgQzE1LjE4NywyNS4zMTkwMiAxNSwyNS42NDYwMTk4IDE1LDI2LjAwMDAxOTYgTDE1LDU1IEMxNSw1NS4zNjkwMDYyIDE1LjIwNCw1NS43MDkwMDYxIDE1LjUzLDU1Ljg4MzAwNiBMMzkuOTg0LDY4Ljg4MzAwMDEgQzQwLjEzMSw2OC45NjEgNDAuMjkyLDY5IDQwLjQ1Myw2OSBDNDAuNjIsNjkgNDAuNzg2LDY4Ljk1OCA0MC45MzcsNjguODc1MDAwMSBMNjQuNDg0LDU1Ljg3NTAwNiBDNjQuNzk3LDU1LjcwMjAwNjEgNjQuOTkzLDU1LjM3NTAwNjIgNjUuMDAwMTQxNiw1NS4wMTgwMDY0IEM2NS4wMDYsNTQuNjYwMDA2NiA2NC44MjEsNTQuMzI2MDA2NyA2NC41MTUsNTQuMTQyMDA2OCBMNjQuNTE1LDU0LjE0MjAwNjggWiIgaWQ9IkFtYXpvbi1FbGFzdGljLUNvbnRhaW5lci1LdWJlcm5ldGVzX0ljb25fNjRfU3F1aWQiIGZpbGw9IiNGRkZGRkYiPjwvcGF0aD4KICAgIDwvZz4KPC9zdmc+',
+  aurora: 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB3aWR0aD0iODBweCIgaGVpZ2h0PSI4MHB4IiB2aWV3Qm94PSIwIDAgODAgODAiIHZlcnNpb249IjEuMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayI+CiAgICA8IS0tIEdlbmVyYXRvcjogU2tldGNoIDY0ICg5MzUzNykgLSBodHRwczovL3NrZXRjaC5jb20gLS0+CiAgICA8dGl0bGU+SWNvbi1BcmNoaXRlY3R1cmUvNjQvQXJjaF9BbWF6b24tQXVyb3JhXzY0PC90aXRsZT4KICAgIDxkZXNjPkNyZWF0ZWQgd2l0aCBTa2V0Y2guPC9kZXNjPgogICAgPGRlZnM+CiAgICAgICAgPGxpbmVhckdyYWRpZW50IHgxPSIwJSIgeTE9IjEwMCUiIHgyPSIxMDAlIiB5Mj0iMCUiIGlkPSJsaW5lYXJHcmFkaWVudC0xIj4KICAgICAgICAgICAgPHN0b3Agc3RvcC1jb2xvcj0iIzJFMjdBRCIgb2Zmc2V0PSIwJSI+PC9zdG9wPgogICAgICAgICAgICA8c3RvcCBzdG9wLWNvbG9yPSIjNTI3RkZGIiBvZmZzZXQ9IjEwMCUiPjwvc3RvcD4KICAgICAgICA8L2xpbmVhckdyYWRpZW50PgogICAgPC9kZWZzPgogICAgPGcgaWQ9Ikljb24tQXJjaGl0ZWN0dXJlLzY0L0FyY2hfQW1hem9uLUF1cm9yYV82NCIgc3Ryb2tlPSJub25lIiBzdHJva2Utd2lkdGg9IjEiIGZpbGw9Im5vbmUiIGZpbGwtcnVsZT0iZXZlbm9kZCI+CiAgICAgICAgPGcgaWQ9Ikljb24tQXJjaGl0ZWN0dXJlLUJHLzY0L0RhdGFiYXNlIiBmaWxsPSJ1cmwoI2xpbmVhckdyYWRpZW50LTEpIj4KICAgICAgICAgICAgPHJlY3QgaWQ9IlJlY3RhbmdsZSIgeD0iMCIgeT0iMCIgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIj48L3JlY3Q+CiAgICAgICAgPC9nPgogICAgICAgIDxwYXRoIGQ9Ik00NS4wOTExMDU1LDE4LjA0NTEyNTggTDQyLjA4MzA2NjgsMTguMDQ1MTI1OCBMNDIuMDgzMDY2OCwxNi4wMjcwNzU1IEw0NS4wOTExMDU1LDE2LjAyNzA3NTUgTDQ1LjA5MTEwNTUsMTMgTDQ3LjA5NjQ2NDcsMTMgTDQ3LjA5NjQ2NDcsMTYuMDI3MDc1NSBMNTAuMTA0NTAzNCwxNi4wMjcwNzU1IEw1MC4xMDQ1MDM0LDE4LjA0NTEyNTggTDQ3LjA5NjQ2NDcsMTguMDQ1MTI1OCBMNDcuMDk2NDY0NywyMS4wNzIyMDE0IEw0NS4wOTExMDU1LDIxLjA3MjIwMTQgTDQ1LjA5MTEwNTUsMTguMDQ1MTI1OCBaIE01Ny4xMjMyNjA0LDI5LjE0NDQwMjcgTDU0LjExNTIyMTcsMjkuMTQ0NDAyNyBMNTQuMTE1MjIxNywyNy4xMjYzNTI0IEw1Ny4xMjMyNjA0LDI3LjEyNjM1MjQgTDU3LjEyMzI2MDQsMjQuMDk5Mjc2OSBMNTkuMTI4NjE5NiwyNC4wOTkyNzY5IEw1OS4xMjg2MTk2LDI3LjEyNjM1MjQgTDYyLjEzNjY1ODMsMjcuMTI2MzUyNCBMNjIuMTM2NjU4MywyOS4xNDQ0MDI3IEw1OS4xMjg2MTk2LDI5LjE0NDQwMjcgTDU5LjEyODYxOTYsMzIuMTcxNDc4MiBMNTcuMTIzMjYwNCwzMi4xNzE0NzgyIEw1Ny4xMjMyNjA0LDI5LjE0NDQwMjcgWiBNNTEuOTAxMzA1Miw2MS4wMzM2MzQyIEM0OS45ODYxODcyLDU2LjE2ODExNDggNDUuNTY2Mzc1Nyw1MS43MjAzMzE5IDQwLjcyOTQ0OTQsNDkuNzkyMDg0OCBDNDUuNTY2Mzc1Nyw0Ny44NjQ4NDY3IDQ5Ljk4NjE4NzIsNDMuNDE3MDYzNyA1MS45MDEzMDUyLDM4LjU1MDUzNTMgQzUzLjgxNjQyMzIsNDMuNDE3MDYzNyA1OC4yMzYyMzQ4LDQ3Ljg2NDg0NjcgNjMuMDcyMTU4NCw0OS43OTIwODQ4IEM1OC4yMzYyMzQ4LDUxLjcyMDMzMTkgNTMuODE2NDIzMiw1Ni4xNjgxMTQ4IDUxLjkwMTMwNTIsNjEuMDMzNjM0MiBMNTEuOTAxMzA1Miw2MS4wMzM2MzQyIFogTTY3Ljk5NzMyMDQsNDguNzgzMDU5NiBDNjAuOTQ0NDcyMyw0OC43ODMwNTk2IDUyLjkwMzk4NDgsNDAuNjkxNjg2OCA1Mi45MDM5ODQ4LDMzLjU5NDIwMzcgQzUyLjkwMzk4NDgsMzMuMDM3MjIxOCA1Mi40NTU3ODcsMzIuNTg1MTc4NSA1MS45MDEzMDUyLDMyLjU4NTE3ODUgQzUxLjM0NjgyMzQsMzIuNTg1MTc4NSA1MC44OTg2MjU2LDMzLjAzNzIyMTggNTAuODk4NjI1NiwzMy41OTQyMDM3IEM1MC44OTg2MjU2LDQwLjY5MTY4NjggNDIuODU3MTM1NCw0OC43ODMwNTk2IDM1LjgwNDI4NzMsNDguNzgzMDU5NiBDMzUuMjUwODA4Miw0OC43ODMwNTk2IDM0LjgwMTYwNzcsNDkuMjM1MTAyOSAzNC44MDE2MDc3LDQ5Ljc5MjA4NDggQzM0LjgwMTYwNzcsNTAuMzUwMDc1NyAzNS4yNTA4MDgyLDUwLjgwMTEwOTkgMzUuODA0Mjg3Myw1MC44MDExMDk5IEM0Mi44NTcxMzU0LDUwLjgwMTEwOTkgNTAuODk4NjI1Niw1OC44OTI0ODI4IDUwLjg5ODYyNTYsNjUuOTkwOTc0OCBDNTAuODk4NjI1Niw2Ni41NDc5NTY3IDUxLjM0NjgyMzQsNjcgNTEuOTAxMzA1Miw2NyBDNTIuNDU1Nzg3LDY3IDUyLjkwMzk4NDgsNjYuNTQ3OTU2NyA1Mi45MDM5ODQ4LDY1Ljk5MDk3NDggQzUyLjkwMzk4NDgsNTguODkyNDgyOCA2MC45NDQ0NzIzLDUwLjgwMTEwOTkgNjcuOTk3MzIwNCw1MC44MDExMDk5IEM2OC41NTA3OTk2LDUwLjgwMTEwOTkgNjksNTAuMzUwMDc1NyA2OSw0OS43OTIwODQ4IEM2OSw0OS4yMzUxMDI5IDY4LjU1MDc5OTYsNDguNzgzMDU5NiA2Ny45OTczMjA0LDQ4Ljc4MzA1OTYgTDY3Ljk5NzMyMDQsNDguNzgzMDU5NiBaIE0xMy4wMDUzNTkxLDI4LjkwMzI0NTcgQzE1LjkyNTE2MjEsMzEuMDQwMzYxIDIxLjU5ODMyMzEsMzIuMTcxNDc4MiAyNy4wNDI4NzMyLDMyLjE3MTQ3ODIgQzMyLjQ4NzQyMzMsMzIuMTcxNDc4MiAzOC4xNjA1ODQzLDMxLjA0MDM2MSA0MS4wODAzODcyLDI4LjkwMzI0NTcgTDQxLjA4MDM4NzIsMzguNTY3Njg4OCBDMzkuNjM1NTI2LDQwLjUwMDk4MSAzNC4zMjIzMjY5LDQyLjQwNjAyMDUgMjcuMjQzNDA5MSw0Mi40MDYwMjA1IEMxOS4wOTQ2MzIyLDQyLjQwNjAyMDUgMTMuMDA1MzU5MSwzOS44NDMwOTY2IDEzLjAwNTM1OTEsMzcuNTUxNjAwNCBMMTMuMDA1MzU5MSwyOC45MDMyNDU3IFogTTI3LjA0Mjg3MzIsMjEuMDcyMjAxNCBDMzUuNzQwMTE1OCwyMS4wNzIyMDE0IDQxLjA4MDM4NzIsMjMuNzE2ODU2MyA0MS4wODAzODcyLDI1LjYxMjgxNDYgQzQxLjA4MDM4NzIsMjcuNTA4NzcyOSAzNS43NDAxMTU4LDMwLjE1MzQyNzkgMjcuMDQyODczMiwzMC4xNTM0Mjc5IEMxOC4zNDU2MzA2LDMwLjE1MzQyNzkgMTMuMDA1MzU5MSwyNy41MDg3NzI5IDEzLjAwNTM1OTEsMjUuNjEyODE0NiBDMTMuMDA1MzU5MSwyMy43MTY4NTYzIDE4LjM0NTYzMDYsMjEuMDcyMjAxNCAyNy4wNDI4NzMyLDIxLjA3MjIwMTQgTDI3LjA0Mjg3MzIsMjEuMDcyMjAxNCBaIE00MS4wODAzODcyLDU4Ljk0MTkyNSBDNDEuMDgwMzg3Miw2MS4yNjc3MjggMzUuMDc1MzM5Myw2My44NzAwMDM5IDI3LjAzNzg1OTgsNjMuODcwMDAzOSBDMTkuMDA2Mzk2NCw2My44NzAwMDM5IDEzLjAwNTM1OTEsNjEuMjY3NzI4IDEzLjAwNTM1OTEsNTguOTQxOTI1IEwxMy4wMDUzNTkxLDUyLjQ5NDI1NDIgQzE1Ljk2MTI1ODUsNTQuNzUwNDM0NCAyMS43NDc3MjI0LDU1Ljk0NTEyMDIgMjcuMzAwNTYxOCw1NS45NDUxMjAyIEMzMS4xNjE4ODA5LDU1Ljk0NTEyMDIgMzQuODk1ODU5Niw1NS4zOTYyMTA1IDM3LjgxMDY0OTEsNTQuMzk5MjkzNyBMMzcuMTY2OTI4OSw1Mi40ODgyIEMzNC40NTM2Nzc5LDUzLjQxNTQ5NDEgMzAuOTQ5MzEyOCw1My45MjcwNjk5IDI3LjMwMDU2MTgsNTMuOTI3MDY5OSBDMTkuMTE4Njk2NSw1My45MjcwNjk5IDEzLjAwNTM1OTEsNTEuMzY0MTQ2IDEzLjAwNTM1OTEsNDkuMDcyNjQ5OCBMMTMuMDA1MzU5MSw0MC45NzkyNTg5IEMxNS45NTMyMzcxLDQzLjIzMTQwMzEgMjEuNzE0NjMzOSw0NC40MjQwNzA5IDI3LjI0MzQwOTEsNDQuNDI0MDcwOSBDMzMuMTY3MjQsNDQuNDI0MDcwOSAzOC4yNDc4MTc0LDQzLjE5NjA4NzIgNDEuMDgwMzg3Miw0MS4yNTE2OTU3IEw0MS4wODAzODcyLDQ0LjI3OTc4MDMgTDQzLjA4NTc0NjQsNDQuMjc5NzgwMyBMNDMuMDg1NzQ2NCwyNS42MTI4MTQ2IEM0My4wODU3NDY0LDIxLjM1MjcxMDQgMzQuODIwNjU4NywxOS4wNTQxNTEgMjcuMDQyODczMiwxOS4wNTQxNTEgQzE5LjU4MTkzNDUsMTkuMDU0MTUxIDExLjY5MTg0ODksMjEuMTc1MTIxOSAxMS4wNjIxNjYxLDI1LjEwODMwMiBMMTEsMjUuMTA4MzAyIEwxMSw1OC45NDE5MjUgQzExLDYzLjQ1MzI3NjUgMTkuMjYzMDgyNCw2NS44ODgwNTQzIDI3LjAzNzg1OTgsNjUuODg4MDU0MyBDMzQuODE3NjUwNiw2NS44ODgwNTQzIDQzLjA4NTc0NjQsNjMuNDUzMjc2NSA0My4wODU3NDY0LDU4Ljk0MTkyNSBMNDMuMDg1NzQ2NCw1NS4zNzkwNTcxIEw0MS4wODAzODcyLDU1LjM3OTA1NzEgTDQxLjA4MDM4NzIsNTguOTQxOTI1IFoiIGlkPSJBbWF6b24tQXVyb3JhX0ljb25fNjRfU3F1aWQiIGZpbGw9IiNGRkZGRkYiPjwvcGF0aD4KICAgIDwvZz4KPC9zdmc+',
+  elasticache: 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB3aWR0aD0iODBweCIgaGVpZ2h0PSI4MHB4IiB2aWV3Qm94PSIwIDAgODAgODAiIHZlcnNpb249IjEuMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayI+CiAgICA8IS0tIEdlbmVyYXRvcjogU2tldGNoIDY0ICg5MzUzNykgLSBodHRwczovL3NrZXRjaC5jb20gLS0+CiAgICA8dGl0bGU+SWNvbi1BcmNoaXRlY3R1cmUvNjQvQXJjaF9BbWF6b24tRWxhc3RpQ2FjaGVfNjQ8L3RpdGxlPgogICAgPGRlc2M+Q3JlYXRlZCB3aXRoIFNrZXRjaC48L2Rlc2M+CiAgICA8ZGVmcz4KICAgICAgICA8bGluZWFyR3JhZGllbnQgeDE9IjAlIiB5MT0iMTAwJSIgeDI9IjEwMCUiIHkyPSIwJSIgaWQ9ImxpbmVhckdyYWRpZW50LTEiPgogICAgICAgICAgICA8c3RvcCBzdG9wLWNvbG9yPSIjMkUyN0FEIiBvZmZzZXQ9IjAlIj48L3N0b3A+CiAgICAgICAgICAgIDxzdG9wIHN0b3AtY29sb3I9IiM1MjdGRkYiIG9mZnNldD0iMTAwJSI+PC9zdG9wPgogICAgICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICA8L2RlZnM+CiAgICA8ZyBpZD0iSWNvbi1BcmNoaXRlY3R1cmUvNjQvQXJjaF9BbWF6b24tRWxhc3RpQ2FjaGVfNjQiIHN0cm9rZT0ibm9uZSIgc3Ryb2tlLXdpZHRoPSIxIiBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPgogICAgICAgIDxnIGlkPSJJY29uLUFyY2hpdGVjdHVyZS1CRy82NC9EYXRhYmFzZSIgZmlsbD0idXJsKCNsaW5lYXJHcmFkaWVudC0xKSI+CiAgICAgICAgICAgIDxyZWN0IGlkPSJSZWN0YW5nbGUiIHg9IjAiIHk9IjAiIHdpZHRoPSI4MCIgaGVpZ2h0PSI4MCI+PC9yZWN0PgogICAgICAgIDwvZz4KICAgICAgICA8cGF0aCBkPSJNNTEsNjEuNTU1NDg2NCBMNTEsNTUuNzAyOTM0MiBDNDguNDY2LDU3LjM0MDA4ODcgNDMuOTA0LDU4LjExMzE2MTYgMzkuNTU2LDU4LjExMzE2MTYgQzM0LjgxNiw1OC4xMTMxNjE2IDMxLjEyMSw1Ny4yODYwODM2IDI5LDU1Ljg2Nzk0OTggTDI5LDYxLjU1NTQ4NjQgQzI5LDYzLjI0ODY0NjEgMzIuOTQ4LDY0Ljk5OTgxMTMgMzkuNTU2LDY0Ljk5OTgxMTMgQzQ2LjMsNjQuOTk5ODExMyA1MSw2My4xODQ2NDAxIDUxLDYxLjU1NTQ4NjQgTDUxLDYxLjU1NTQ4NjQgWiBNMzkuNTU2LDQ5LjIyMDMyMjcgQzM0LjgxNiw0OS4yMjAzMjI3IDMxLjEyMSw0OC4zOTQyNDQ3IDI5LDQ2Ljk3NjExMSBMMjksNTIuNjg2NjQ5NyBDMjkuMDMxLDU0LjM3MzgwODggMzIuOTczLDU2LjExMjk3MjkgMzkuNTU2LDU2LjExMjk3MjkgQzQ2LjI3OSw1Ni4xMTI5NzI5IDUwLjk2OSw1NC4zMDg4MDI3IDUxLDUyLjY4MjY0OTMgTDUxLDQ2LjgxMDA5NTMgQzQ4LjQ2Niw0OC40NDgyNDk4IDQzLjkwNCw0OS4yMjAzMjI3IDM5LjU1Niw0OS4yMjAzMjI3IEwzOS41NTYsNDkuMjIwMzIyNyBaIE01MSw0My43OTA4MTA1IEw1MSwzNy4wMjkxNzI2IEM0OC40NjYsMzguNjY2MzI3IDQzLjkwNCwzOS40MzkzOTk5IDM5LjU1NiwzOS40MzkzOTk5IEMzNC44MTYsMzkuNDM5Mzk5OSAzMS4xMjEsMzguNjEzMzIyIDI5LDM3LjE5NTE4ODIgTDI5LDQzLjc5NDgxMDggQzI5LjAzMSw0NS40ODE5NyAzMi45NzMsNDcuMjIwMTM0IDM5LjU1Niw0Ny4yMjAxMzQgQzQ2LjI3OSw0Ny4yMjAxMzQgNTAuOTY5LDQ1LjQxNTk2MzggNTEsNDMuNzkwODEwNSBMNTEsNDMuNzkwODEwNSBaIE0yOC45OTcsMzMuOTkyODg2MSBDMjguOTk3LDMzLjk5NTg4NjQgMjguOTk4LDMzLjk5ODg4NjcgMjguOTk4LDM0LjAwMTg4NyBMMjksMzQuMDAxODg3IEwyOSwzNC4wMTI4ODggQzI5LjAzMSwzNS43MDAwNDcyIDMyLjk3MywzNy40MzkyMTEyIDM5LjU1NiwzNy40MzkyMTEyIEM0Ni44OTgsMzcuNDM5MjExMiA1MC45NjksMzUuNDE3MDIwNSA1MSwzNC4wMDk4ODc3IEw1MSwzNC4wMDE4ODcgTDUxLjAwMiwzNC4wMDE4ODcgQzUxLjAwMiwzMy45OTg4ODY3IDUxLjAwMywzMy45OTU4ODY0IDUxLjAwMywzMy45OTI4ODYxIEM1MS4wMDMsMzIuNTg0NzUzMyA0Ni45MjcsMzAuNTQ2NTYxIDM5LjU1NiwzMC41NDY1NjEgQzMyLjk0NiwzMC41NDY1NjEgMjguOTk3LDMyLjI5ODcyNjMgMjguOTk3LDMzLjk5Mjg4NjEgTDI4Ljk5NywzMy45OTI4ODYxIFogTTUzLDM0LjAxNzg4ODUgTDUzLDQzLjc3MzgwODggTDUzLjAwMyw0My43NzM4MDg4IEM1My4wMDMsNDMuNzgyODA5NyA1Myw0My43ODk4MTA0IDUzLDQzLjc5ODgxMTIgTDUzLDUyLjY2NjY0NzggTDUzLjAwMyw1Mi42NjY2NDc4IEM1My4wMDMsNTIuNjc1NjQ4NiA1Myw1Mi42ODI2NDkzIDUzLDUyLjY5MTY1MDIgTDUzLDYxLjU1NTQ4NjQgQzUzLDY1LjI5NjgzOTMgNDYuMDMxLDY3IDM5LjU1Niw2NyBDMzEuOTI5LDY3IDI3LDY0Ljg2Mjc5ODQgMjcsNjEuNTU1NDg2NCBMMjcsNTIuNjk3NjUwNyBDMjcsNTIuNjg2NjQ5NyAyNi45OTcsNTIuNjc3NjQ4OCAyNi45OTcsNTIuNjY2NjQ3OCBMMjcsNTIuNjY2NjQ3OCBMMjcsNDMuODA0ODExOCBDMjcsNDMuNzk0ODEwOCAyNi45OTcsNDMuNzg0ODA5OSAyNi45OTcsNDMuNzczODA4OCBMMjcsNDMuNzczODA4OCBMMjcsMzQuMDIzODg5IEMyNywzNC4wMTI4ODggMjYuOTk3LDM0LjAwMzg4NzIgMjYuOTk3LDMzLjk5Mjg4NjEgQzI2Ljk5NywzMC42ODQ1NzQgMzEuOTI3LDI4LjU0NjM3MjMgMzkuNTU2LDI4LjU0NjM3MjMgQzQ2LjAzMiwyOC41NDYzNzIzIDUzLjAwMywzMC4yNTA1MzMxIDUzLjAwMywzMy45OTI4ODYxIEM1My4wMDMsMzQuMDAxODg3IDUzLDM0LjAwODg4NzYgNTMsMzQuMDE3ODg4NSBMNTMsMzQuMDE3ODg4NSBaIE02NywyMS4xMjA2NzE4IEM2Ny41NTMsMjEuMTIwNjcxOCA2OCwyMC42NzI2Mjk1IDY4LDIwLjEyMDU3NzQgTDY4LDE1LjAwMDA5NDMgQzY4LDE0LjQ0NzA0MjIgNjcuNTUzLDE0IDY3LDE0IEwxMywxNCBDMTIuNDQ3LDE0IDEyLDE0LjQ0NzA0MjIgMTIsMTUuMDAwMDk0MyBMMTIsMjAuMTIwNTc3NCBDMTIsMjAuNjcyNjI5NSAxMi40NDcsMjEuMTIwNjcxOCAxMywyMS4xMjA2NzE4IEMxNC4yMjEsMjEuMTIwNjcxOCAxNS4yMTQsMjIuMTA3NzY0OSAxNS4yMTQsMjMuMzIwODc5MyBDMTUuMjE0LDI0LjUzMzk5MzggMTQuMjIxLDI1LjUyMTA4NjkgMTMsMjUuNTIxMDg2OSBDMTIuNDQ3LDI1LjUyMTA4NjkgMTIsMjUuOTY5MTI5MiAxMiwyNi41MjExODEyIEwxMiw0Ny4wMDMxMTM1IEMxMiw0Ny41NTUxNjU2IDEyLjQ0Nyw0OC4wMDMyMDc4IDEzLDQ4LjAwMzIwNzggTDIzLDQ4LjAwMzIwNzggTDIzLDQ2LjAwMzAxOTIgTDE4LDQ2LjAwMzAxOTIgTDE4LDQzLjAwMjczNjEgTDIzLDQzLjAwMjczNjEgTDIzLDQxLjAwMjU0NzQgTDE3LDQxLjAwMjU0NzQgQzE2LjQ0Nyw0MS4wMDI1NDc0IDE2LDQxLjQ0OTU4OTYgMTYsNDIuMDAyNjQxOCBMMTYsNDYuMDAzMDE5MiBMMTQsNDYuMDAzMDE5MiBMMTQsMjcuNDAxMjY0MyBDMTUuODQzLDI2Ljk1MjIyMTkgMTcuMjE0LDI1LjI5MzA2NTQgMTcuMjE0LDIzLjMyMDg3OTMgQzE3LjIxNCwyMS4zNDc2OTMyIDE1Ljg0MywxOS42ODg1MzY3IDE0LDE5LjIzOTQ5NDMgTDE0LDE2LjAwMDE4ODcgTDY2LDE2LjAwMDE4ODcgTDY2LDE5LjIzOTQ5NDMgQzY0LjE1NywxOS42ODg1MzY3IDYyLjc4NiwyMS4zNDc2OTMyIDYyLjc4NiwyMy4zMjA4NzkzIEM2Mi43ODYsMjUuMjkzMDY1NCA2NC4xNTcsMjYuOTUyMjIxOSA2NiwyNy40MDEyNjQzIEw2Niw0Ni4wMDMwMTkyIEw2NCw0Ni4wMDMwMTkyIEw2NCw0Mi4wMDI2NDE4IEM2NCw0MS40NDk1ODk2IDYzLjU1Myw0MS4wMDI1NDc0IDYzLDQxLjAwMjU0NzQgTDU3LDQxLjAwMjU0NzQgTDU3LDQzLjAwMjczNjEgTDYyLDQzLjAwMjczNjEgTDYyLDQ2LjAwMzAxOTIgTDU3LDQ2LjAwMzAxOTIgTDU3LDQ4LjAwMzIwNzggTDY3LDQ4LjAwMzIwNzggQzY3LjU1Myw0OC4wMDMyMDc4IDY4LDQ3LjU1NTE2NTYgNjgsNDcuMDAzMTEzNSBMNjgsMjYuNTIxMTgxMiBDNjgsMjUuOTY5MTI5MiA2Ny41NTMsMjUuNTIxMDg2OSA2NywyNS41MjEwODY5IEM2NS43NzksMjUuNTIxMDg2OSA2NC43ODYsMjQuNTMzOTkzOCA2NC43ODYsMjMuMzIwODc5MyBDNjQuNzg2LDIyLjEwNzc2NDkgNjUuNzc5LDIxLjEyMDY3MTggNjcsMjEuMTIwNjcxOCBMNjcsMjEuMTIwNjcxOCBaIE0yOCwyOC4wMDEzMjA5IEwyOCwyMC4wMDA1NjYxIEMyOCwxOS40NDc1MTM5IDI3LjU1MywxOS4wMDA0NzE3IDI3LDE5LjAwMDQ3MTcgTDIxLDE5LjAwMDQ3MTcgQzIwLjQ0NywxOS4wMDA0NzE3IDIwLDE5LjQ0NzUxMzkgMjAsMjAuMDAwNTY2MSBMMjAsMzcuMDAyMTcgQzIwLDM3LjU1NDIyMjEgMjAuNDQ3LDM4LjAwMjI2NDQgMjEsMzguMDAyMjY0NCBMMjQsMzguMDAyMjY0NCBMMjQsMzYuMDAyMDc1NyBMMjIsMzYuMDAyMDc1NyBMMjIsMjEuMDAwNjYwNCBMMjYsMjEuMDAwNjYwNCBMMjYsMjguMDAxMzIwOSBMMjgsMjguMDAxMzIwOSBaIE01OCwzNi4wMDIwNzU3IEw1NywzNi4wMDIwNzU3IEw1NywzOC4wMDIyNjQ0IEw1OSwzOC4wMDIyNjQ0IEM1OS41NTMsMzguMDAyMjY0NCA2MCwzNy41NTQyMjIxIDYwLDM3LjAwMjE3IEw2MCwyMC4wMDA1NjYxIEM2MCwxOS40NDc1MTM5IDU5LjU1MywxOS4wMDA0NzE3IDU5LDE5LjAwMDQ3MTcgTDUzLDE5LjAwMDQ3MTcgQzUyLjQ0NywxOS4wMDA0NzE3IDUyLDE5LjQ0NzUxMzkgNTIsMjAuMDAwNTY2MSBMNTIsMjguMDAxMzIwOSBMNTQsMjguMDAxMzIwOSBMNTQsMjEuMDAwNjYwNCBMNTgsMjEuMDAwNjYwNCBMNTgsMzYuMDAyMDc1NyBaIE01MCwyNy4wMDEyMjY1IEw1MCwyMC4wMDA1NjYxIEM1MCwxOS40NDc1MTM5IDQ5LjU1MywxOS4wMDA0NzE3IDQ5LDE5LjAwMDQ3MTcgTDQyLDE5LjAwMDQ3MTcgQzQxLjQ0NywxOS4wMDA0NzE3IDQxLDE5LjQ0NzUxMzkgNDEsMjAuMDAwNTY2MSBMNDEsMjYuMDAxMTMyMiBMNDMsMjYuMDAxMTMyMiBMNDMsMjEuMDAwNjYwNCBMNDgsMjEuMDAwNjYwNCBMNDgsMjcuMDAxMjI2NSBMNTAsMjcuMDAxMjI2NSBaIE0zNywyNi4wMDExMzIyIEwzNywyMS4wMDA2NjA0IEwzMiwyMS4wMDA2NjA0IEwzMiwyNy4wMDEyMjY1IEwzMCwyNy4wMDEyMjY1IEwzMCwyMC4wMDA1NjYxIEMzMCwxOS40NDc1MTM5IDMwLjQ0NywxOS4wMDA0NzE3IDMxLDE5LjAwMDQ3MTcgTDM4LDE5LjAwMDQ3MTcgQzM4LjU1MywxOS4wMDA0NzE3IDM5LDE5LjQ0NzUxMzkgMzksMjAuMDAwNTY2MSBMMzksMjYuMDAxMTMyMiBMMzcsMjYuMDAxMTMyMiBaIiBpZD0iQW1hem9uLUVsYXN0aUNhY2hlX0ljb25fNjRfU3F1aWQiIGZpbGw9IiNGRkZGRkYiPjwvcGF0aD4KICAgIDwvZz4KPC9zdmc+',
+  opensearch: 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB3aWR0aD0iODBweCIgaGVpZ2h0PSI4MHB4IiB2aWV3Qm94PSIwIDAgODAgODAiIHZlcnNpb249IjEuMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayI+CiAgICA8IS0tIEdlbmVyYXRvcjogU2tldGNoIDY0ICg5MzUzNykgLSBodHRwczovL3NrZXRjaC5jb20gLS0+CiAgICA8dGl0bGU+SWNvbi1BcmNoaXRlY3R1cmUvNjQvQXJjaF9BbWF6b24tRWxhc3RpY3NlYXJjaC1TZXJ2aWNlXzY0PC90aXRsZT4KICAgIDxkZXNjPkNyZWF0ZWQgd2l0aCBTa2V0Y2guPC9kZXNjPgogICAgPGRlZnM+CiAgICAgICAgPGxpbmVhckdyYWRpZW50IHgxPSIwJSIgeTE9IjEwMCUiIHgyPSIxMDAlIiB5Mj0iMCUiIGlkPSJsaW5lYXJHcmFkaWVudC0xIj4KICAgICAgICAgICAgPHN0b3Agc3RvcC1jb2xvcj0iIzREMjdBOCIgb2Zmc2V0PSIwJSI+PC9zdG9wPgogICAgICAgICAgICA8c3RvcCBzdG9wLWNvbG9yPSIjQTE2NkZGIiBvZmZzZXQ9IjEwMCUiPjwvc3RvcD4KICAgICAgICA8L2xpbmVhckdyYWRpZW50PgogICAgPC9kZWZzPgogICAgPGcgaWQ9Ikljb24tQXJjaGl0ZWN0dXJlLzY0L0FyY2hfQW1hem9uLUVsYXN0aWNzZWFyY2gtU2VydmljZV82NCIgc3Ryb2tlPSJub25lIiBzdHJva2Utd2lkdGg9IjEiIGZpbGw9Im5vbmUiIGZpbGwtcnVsZT0iZXZlbm9kZCI+CiAgICAgICAgPGcgaWQ9Ikljb24tQXJjaGl0ZWN0dXJlLUJHLzY0L0FuYWx5dGljcyIgZmlsbD0idXJsKCNsaW5lYXJHcmFkaWVudC0xKSI+CiAgICAgICAgICAgIDxyZWN0IGlkPSJSZWN0YW5nbGUiIHg9IjAiIHk9IjAiIHdpZHRoPSI4MCIgaGVpZ2h0PSI4MCI+PC9yZWN0PgogICAgICAgIDwvZz4KICAgICAgICA8cGF0aCBkPSJNNDQuMjYsNTEuMzMgQzM5Ljg0Myw1MS4zMyAzNi4yNSw0Ny43MzcgMzYuMjUsNDMuMzIxIEMzNi4yNSwzOC45MDQgMzkuODQzLDM1LjMxMSA0NC4yNiwzNS4zMTEgQzQ4LjY3NywzNS4zMTEgNTIuMjcsMzguOTA0IDUyLjI3LDQzLjMyMSBDNTIuMjcsNDcuNzM3IDQ4LjY3Nyw1MS4zMyA0NC4yNiw1MS4zMyBMNDQuMjYsNTEuMzMgWiBNNDQuMjYsMzMuMzExIEMzOC43NCwzMy4zMTEgMzQuMjUsMzcuODAxIDM0LjI1LDQzLjMyMSBDMzQuMjUsNDguODQgMzguNzQsNTMuMzMgNDQuMjYsNTMuMzMgQzQ5Ljc4LDUzLjMzIDU0LjI3LDQ4Ljg0IDU0LjI3LDQzLjMyMSBDNTQuMjcsMzcuODAxIDQ5Ljc4LDMzLjMxMSA0NC4yNiwzMy4zMTEgTDQ0LjI2LDMzLjMxMSBaIE02NC41NDgsNjEuMzQ2IEM2My44OTcsNjIuMDY3IDYyLjc3Nyw2Mi4xMjcgNjIuMDUyLDYxLjQ3NyBMNTMuNzEyLDUzLjk1NCBDNTQuNTkzLDUzLjE3IDU1LjM4NCw1Mi4yOSA1Ni4wNDksNTEuMzEzIEw2NC40MTYsNTguODUxIEM2NS4xMzksNTkuNTAzIDY1LjE5Nyw2MC42MjQgNjQuNTQ4LDYxLjM0NiBMNjQuNTQ4LDYxLjM0NiBaIE0zMi4wMTEsNDMuMzIxIEMzMi4wMTEsMzYuNTY2IDM3LjUwNiwzMS4wNzEgNDQuMjYsMzEuMDcxIEM1MS4wMTQsMzEuMDcxIDU2LjUwOSwzNi41NjYgNTYuNTA5LDQzLjMyMSBDNTYuNTA5LDUwLjA3NSA1MS4wMTQsNTUuNTcgNDQuMjYsNTUuNTcgQzM3LjUwNiw1NS41NyAzMi4wMTEsNTAuMDc1IDMyLjAxMSw0My4zMjEgTDMyLjAxMSw0My4zMjEgWiBNNTcuMDYzLDQ5LjUzNSBDNTcuOTgsNDcuNjU0IDU4LjUwOSw0NS41NSA1OC41MDksNDMuMzIxIEM1OC41MDksMzUuNDYzIDUyLjExNywyOS4wNzEgNDQuMjYsMjkuMDcxIEMzNi40MDMsMjkuMDcxIDMwLjAxMSwzNS40NjMgMzAuMDExLDQzLjMyMSBDMzAuMDExLDUxLjE3OCAzNi40MDMsNTcuNTcgNDQuMjYsNTcuNTcgQzQ3LjE1OSw1Ny41NyA0OS44NTYsNTYuNjk1IDUyLjEwOSw1NS4yMDIgTDYwLjcxNCw2Mi45NjQgQzYxLjQzMiw2My42MDkgNjIuMzMzLDYzLjkyNyA2My4yMzIsNjMuOTI2MDAyNCBDNjQuMjYzLDYzLjkyNjAwMjQgNjUuMjksNjMuNTA4IDY2LjAzNCw2Mi42ODUgQzY3LjQyLDYxLjE0MyA2Ny4yOTYsNTguNzU3IDY1Ljc1Niw1Ny4zNjYgTDU3LjA2Myw0OS41MzUgWiBNNjcsMjAgTDY3LDU0IEw2NSw1NCBMNjUsMjEgTDU3LDIxIEw1NywzMiBMNTUsMzIgTDU1LDIwIEM1NSwxOS40NDggNTUuNDQ4LDE5IDU2LDE5IEw2NiwxOSBDNjYuNTUzLDE5IDY3LDE5LjQ0OCA2NywyMCBMNjcsMjAgWiBNNTEsNjEgTDUzLDYxIEw1Myw2NiBDNTMsNjYuNTUzIDUyLjU1Myw2NyA1Miw2NyBMNDIsNjcgQzQxLjQ0Nyw2NyA0MSw2Ni41NTMgNDEsNjYgTDQxLDYwIEw0Myw2MCBMNDMsNjUgTDUxLDY1IEw1MSw2MSBaIE00MywyNiBMNDEsMjYgTDQxLDE0IEM0MSwxMy40NDggNDEuNDQ3LDEzIDQyLDEzIEw1MiwxMyBDNTIuNTUzLDEzIDUzLDEzLjQ0OCA1MywxNCBMNTMsMjggTDUxLDI4IEw1MSwxNSBMNDMsMTUgTDQzLDI2IFogTTM3LDU5IEwzOSw1OSBMMzksNjYgQzM5LDY2LjU1MyAzOC41NTMsNjcgMzgsNjcgTDI4LDY3IEMyNy40NDgsNjcgMjcsNjYuNTUzIDI3LDY2IEwyNyw1MSBMMjksNTEgTDI5LDY1IEwzNyw2NSBMMzcsNTkgWiBNMjksMzYgTDI3LDM2IEwyNywyMyBDMjcsMjIuNDQ4IDI3LjQ0OCwyMiAyOCwyMiBMMzgsMjIgQzM4LjU1MywyMiAzOSwyMi40NDggMzksMjMgTDM5LDI3IEwzNywyNyBMMzcsMjQgTDI5LDI0IEwyOSwzNiBaIE0xNSw2NSBMMjMsNjUgTDIzLDMxIEwxNSwzMSBMMTUsNjUgWiBNMjQsMjkgTDE0LDI5IEMxMy40NDgsMjkgMTMsMjkuNDQ4IDEzLDMwIEwxMyw2NiBDMTMsNjYuNTUzIDEzLjQ0OCw2NyAxNCw2NyBMMjQsNjcgQzI0LjU1Myw2NyAyNSw2Ni41NTMgMjUsNjYgTDI1LDMwIEMyNSwyOS40NDggMjQuNTUzLDI5IDI0LDI5IEwyNCwyOSBaIiBpZD0iQW1hem9uLUVsYXN0aWNzZWFyY2gtU2VydmljZV9JY29uXzY0X1NxdWlkIiBmaWxsPSIjRkZGRkZGIj48L3BhdGg+CiAgICA8L2c+Cjwvc3ZnPg==',
+  msk: 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB3aWR0aD0iODBweCIgaGVpZ2h0PSI4MHB4IiB2aWV3Qm94PSIwIDAgODAgODAiIHZlcnNpb249IjEuMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayI+CiAgICA8IS0tIEdlbmVyYXRvcjogU2tldGNoIDY0ICg5MzUzNykgLSBodHRwczovL3NrZXRjaC5jb20gLS0+CiAgICA8dGl0bGU+SWNvbi1BcmNoaXRlY3R1cmUvNjQvQXJjaF9BbWF6b24tTWFuYWdlZC1TdHJlYW1pbmctZm9yLUthZmthXzY0PC90aXRsZT4KICAgIDxkZXNjPkNyZWF0ZWQgd2l0aCBTa2V0Y2guPC9kZXNjPgogICAgPGRlZnM+CiAgICAgICAgPGxpbmVhckdyYWRpZW50IHgxPSIwJSIgeTE9IjEwMCUiIHgyPSIxMDAlIiB5Mj0iMCUiIGlkPSJsaW5lYXJHcmFkaWVudC0xIj4KICAgICAgICAgICAgPHN0b3Agc3RvcC1jb2xvcj0iIzREMjdBOCIgb2Zmc2V0PSIwJSI+PC9zdG9wPgogICAgICAgICAgICA8c3RvcCBzdG9wLWNvbG9yPSIjQTE2NkZGIiBvZmZzZXQ9IjEwMCUiPjwvc3RvcD4KICAgICAgICA8L2xpbmVhckdyYWRpZW50PgogICAgPC9kZWZzPgogICAgPGcgaWQ9Ikljb24tQXJjaGl0ZWN0dXJlLzY0L0FyY2hfQW1hem9uLU1hbmFnZWQtU3RyZWFtaW5nLWZvci1LYWZrYV82NCIgc3Ryb2tlPSJub25lIiBzdHJva2Utd2lkdGg9IjEiIGZpbGw9Im5vbmUiIGZpbGwtcnVsZT0iZXZlbm9kZCI+CiAgICAgICAgPGcgaWQ9Ikljb24tQXJjaGl0ZWN0dXJlLUJHLzY0L0FuYWx5dGljcyIgZmlsbD0idXJsKCNsaW5lYXJHcmFkaWVudC0xKSI+CiAgICAgICAgICAgIDxyZWN0IGlkPSJSZWN0YW5nbGUiIHg9IjAiIHk9IjAiIHdpZHRoPSI4MCIgaGVpZ2h0PSI4MCI+PC9yZWN0PgogICAgICAgIDwvZz4KICAgICAgICA8cGF0aCBkPSJNMzYuMDA4MTM3MywzNi45NzcwODg4IEwzNi4wMDgxMzczLDI3Ljk4NjQ2MTYgTDM4LjAwNDA2ODYsMjcuOTg2NDYxNiBMMzguMDA0MDY4NiwzMS45ODIyOTU5IEw0MC42OTc1NzgsMjcuOTg2NDYxNiBMNDIuOTA3MDc0LDI3Ljk4NjQ2MTYgTDM5Ljc4NTQzNzQsMzIuMTkwMDc5MyBMNDMuMTY0NTQ5MiwzNi45NzcwODg4IEw0MC43OTczNzQ2LDM2Ljk3NzA4ODggTDM4LjAwNDA2ODYsMzIuNjMxNjE5IEwzOC4wMDQwNjg2LDM2Ljk3NzA4ODggTDM2LjAwODEzNzMsMzYuOTc3MDg4OCBaIE02Niw0OS4xMTc0MzI1IEw2NS4zMzEzNjMsNDkuNjk1ODI5NSBDNjMuOTg0MTA5Myw1MC44NzU1OTk2IDYyLjE3MTgwMzYsNTEuNDY1OTg0MSA2MC4zNTc1MDIsNTEuNDY1OTg0MSBDNTguNTQzMjAwNCw1MS40NjU5ODQxIDU2LjcyNzkwMDgsNTAuODc1NTk5NiA1NS4zNzg2NTEyLDQ5LjY5MjgzMjYgTDU0LjA0NTM2OTEsNDguNTM4MDM2NSBDNTIuMDg5MzU2Myw0Ni44MjM4MjM2IDQ4LjY2NTMzNiw0Ni44MjM4MjM2IDQ2LjcxMzMxNTIsNDguNTM0MDQwNiBMNDUuMzcyMDQ5Myw0OS42OTU4Mjk1IEM0Mi42Nzg1Mzk5LDUyLjA1NjM2ODYgMzguMTE2ODM4OCw1Mi4wNTgzNjY1IDM1LjQxOTMzNzUsNDkuNjkyODMyNiBMMzQuMDg2MDU1Myw0OC41MzgwMzY1IEMzMi4xMzAwNDI2LDQ2LjgyMzgyMzYgMjguNzA2MDIyMyw0Ni44MjM4MjM2IDI2Ljc1NDAwMTUsNDguNTM0MDQwNiBMMjUuNDEyNzM1Niw0OS42OTU4Mjk1IEMyMi43MTkyMjYyLDUyLjA1NjM2ODYgMTguMTU3NTI1LDUyLjA1ODM2NjUgMTUuNDYwMDIzOCw0OS42OTI4MzI2IEwxNC43OTUzNzg3LDQ5LjExNzQzMjUgTDE2LjEwMTcxNTcsNDcuNjA2MDA4MSBMMTYuNzcwMzUyNyw0OC4xODU0MDQxIEMxOC43MjczNjM1LDQ5Ljg5OTYxNyAyMi4xNTEzODM3LDQ5Ljg5OTYxNyAyNC4xMDI0MDY2LDQ4LjE4OTM5OTkgTDI1LjQ0MzY3MjUsNDcuMDI2NjEyMSBDMjguMTM3MTgxOSw0NC42NjcwNzIgMzIuNjk4ODgzLDQ0LjY2NzA3MiAzNS4zOTYzODQzLDQ3LjAzMDYwOCBMMzYuNzI5NjY2NCw0OC4xODU0MDQxIEMzOC42ODY2NzcyLDQ5Ljg5OTYxNyA0Mi4xMTA2OTc0LDQ5Ljg5OTYxNyA0NC4wNjE3MjAzLDQ4LjE4OTM5OTkgTDQ1LjQwMjk4NjIsNDcuMDI2NjEyMSBDNDguMDk2NDk1Niw0NC42NjcwNzIgNTIuNjU4MTk2OCw0NC42NjcwNzIgNTUuMzU1Njk4LDQ3LjAzMDYwOCBMNTYuNjg4OTgwMiw0OC4xODU0MDQxIEM1OC42NDQ5OTI5LDQ5Ljg5OTYxNyA2Mi4wNjkwMTMyLDQ5Ljg5OTYxNyA2NC4wMjEwMzQsNDguMTg5Mzk5OSBMNjQuNjkzNjYyOSw0Ny42MDYwMDgxIEw2Niw0OS4xMTc0MzI1IFogTTYzLjg5ODI4NDMsNjEuMTM5ODk5IEw2NS4yMDQ2MjEzLDYyLjY1MDMyNDQgTDY0LjUzNTk4NDMsNjMuMjI5NzIwMyBDNjMuMTg5NzI4Niw2NC40MDk0OTA0IDYxLjM3NzQyMjksNjQuOTk4ODc2IDU5LjU2NDExOTMsNjQuOTk4ODc2IEM1Ny43NDg4MTk3LDY0Ljk5ODg3NiA1NS45MzM1MjAxLDY0LjQwODQ5MTUgNTQuNTgzMjcyNiw2My4yMjU3MjQ1IEw1My4yNDk5OTA0LDYyLjA3MDkyODQgQzUxLjI5Mzk3NzcsNjAuMzU4NzEzNCA0Ny44Njk5NTc0LDYwLjM1ODcxMzQgNDUuOTE3OTM2NSw2Mi4wNjY5MzI2IEw0NC41NzY2NzA2LDYzLjIyOTcyMDMgQzQxLjg4NTE1NzIsNjUuNTkwMjU5NSAzNy4zMjM0NTYsNjUuNTkxMjU4NCAzNC42MjM5NTg5LDYzLjIyNTcyNDUgTDMzLjI5MDY3NjcsNjIuMDcwOTI4NCBDMzEuMzM1NjYxOSw2MC4zNTg3MTM0IDI3LjkxMTY0MTcsNjAuMzU4NzEzNCAyNS45NTg2MjI4LDYyLjA2NjkzMjYgTDI0LjYxNzM1NjksNjMuMjI5NzIwMyBDMjEuOTI0ODQ1NSw2NS41OTAyNTk1IDE3LjM2MzE0NDQsNjUuNTkxMjU4NCAxNC42NjQ2NDUxLDYzLjIyNTcyNDUgTDE0LDYyLjY1MDMyNDQgTDE1LjMwNjMzNzEsNjEuMTM5ODk5IEwxNS45NzQ5NzQxLDYxLjcxOTI5NSBDMTcuOTMxOTg0OCw2My40MzE1MSAyMS4zNTYwMDUxLDYzLjQzMjUwODkgMjMuMzA3MDI4LDYxLjcyMjI5MTggTDI0LjY0ODI5MzksNjAuNTYwNTAzIEMyNy4zNDI4MDEyLDU4LjIwMDk2MjggMzEuOTAyNTA2NCw1OC4xOTk5NjM5IDM0LjYwMTAwNTYsNjAuNTYzNDk5OSBMMzUuOTM0Mjg3OCw2MS43MTkyOTUgQzM3Ljg5MTI5ODUsNjMuNDMxNTEgNDEuMzE1MzE4OCw2My40MzI1MDg5IDQzLjI2NjM0MTcsNjEuNzIyMjkxOCBMNDQuNjA3NjA3Niw2MC41NjA1MDMgQzQ3LjMwMjExNDksNTguMjAwOTYyOCA1MS44NjE4MjAxLDU4LjE5OTk2MzkgNTQuNTYwMzE5Myw2MC41NjM0OTk5IEw1NS44OTM2MDE1LDYxLjcxOTI5NSBDNTcuODUwNjEyMiw2My40MzE1MSA2MS4yNzQ2MzI1LDYzLjQzMjUwODkgNjMuMjI1NjU1NCw2MS43MjIyOTE4IEw2My44OTgyODQzLDYxLjEzOTg5OSBaIE02My44OTgyODQzLDU0LjgwNjUwMTYgTDY1LjIwNDYyMTMsNTYuMzE1OTI4IEw2NC41MzU5ODQzLDU2Ljg5NTMyNCBDNjEuODQzNDcyOSw1OS4yNTY4NjIxIDU3LjI4MTc3MTgsNTkuMjU3ODYxIDU0LjU4MzI3MjYsNTYuODkyMzI3MSBMNTMuMjQ5OTkwNCw1NS43Mzc1MzEgQzUxLjI5Mzk3NzcsNTQuMDIzMzE4MSA0Ny44Njk5NTc0LDU0LjAyNDMxNyA0NS45MTc5MzY1LDU1LjczMzUzNTEgTDQ0LjU3NjY3MDYsNTYuODk2MzIyOSBDNDMuMjMwNDE0OSw1OC4wNzYwOTMgNDEuNDE3MTExMyw1OC42NjU0Nzg2IDM5LjYwNDgwNTYsNTguNjY1NDc4NiBDMzcuNzg5NTA2LDU4LjY2NTQ3ODYgMzUuOTc0MjA2NCw1OC4wNzUwOTQxIDM0LjYyMzk1ODksNTYuODkyMzI3MSBMMzMuMjkwNjc2Nyw1NS43Mzc1MzEgQzMxLjMzNTY2MTksNTQuMDIzMzE4MSAyNy45MTE2NDE3LDU0LjAyNDMxNyAyNS45NTg2MjI4LDU1LjczMzUzNTEgTDI0LjYxNzM1NjksNTYuODk2MzIyOSBDMjEuOTI1ODQzNSw1OS4yNTY4NjIxIDE3LjM2NDE0MjMsNTkuMjU2ODYyMSAxNC42NjQ2NDUxLDU2Ljg5MjMyNzEgTDE0LDU2LjMxNTkyOCBMMTUuMzA2MzM3MSw1NC44MDY1MDE2IEwxNS45NzQ5NzQxLDU1LjM4NTg5NzYgQzE3LjkzMTk4NDgsNTcuMTAwMTEwNSAyMS4zNTYwMDUxLDU3LjA5OTExMTUgMjMuMzA3MDI4LDU1LjM4ODg5NDQgTDI0LjY0ODI5MzksNTQuMjI3MTA1NiBDMjcuMzQyODAxMiw1MS44Njc1NjU0IDMxLjkwNDUwMjQsNTEuODY1NTY3NSAzNC42MDEwMDU2LDU0LjIzMDEwMjUgTDM1LjkzNDI4NzgsNTUuMzg0ODk4NiBDMzcuODkxMjk4NSw1Ny4xMDAxMTA1IDQxLjMxNTMxODgsNTcuMDk5MTExNSA0My4yNjYzNDE3LDU1LjM4ODg5NDQgTDQ0LjYwNzYwNzYsNTQuMjI3MTA1NiBDNDcuMzAyMTE0OSw1MS44Njc1NjU0IDUxLjg2MzgxNjEsNTEuODY1NTY3NSA1NC41NjAzMTkzLDU0LjIzMDEwMjUgTDU1Ljg5MzYwMTUsNTUuMzg0ODk4NiBDNTcuODUwNjEyMiw1Ny4xMDAxMTA1IDYxLjI3NDYzMjUsNTcuMDk5MTExNSA2My4yMjU2NTU0LDU1LjM4ODg5NDQgTDYzLjg5ODI4NDMsNTQuODA2NTAxNiBaIE0yNC4wMzI1NDksMzcuOTc2MDQ3NCBDMjUuMTMzMzA1MiwzNy45NzYwNDc0IDI2LjAyODQ4MDQsMzguODcyMTEzMiAyNi4wMjg0ODA0LDM5Ljk3Mzk2NDYgQzI2LjAyODQ4MDQsNDEuMDc1ODE1OSAyNS4xMzMzMDUyLDQxLjk3MTg4MTcgMjQuMDMyNTQ5LDQxLjk3MTg4MTcgQzIyLjkzMTc5MjksNDEuOTcxODgxNyAyMi4wMzY2MTc3LDQxLjA3NTgxNTkgMjIuMDM2NjE3NywzOS45NzM5NjQ2IEMyMi4wMzY2MTc3LDM4Ljg3MjExMzIgMjIuOTMxNzkyOSwzNy45NzYwNDc0IDI0LjAzMjU0OSwzNy45NzYwNDc0IEwyNC4wMzI1NDksMzcuOTc2MDQ3NCBaIE0zOS4wMDIwMzQzLDE2Ljk5NzkxNzIgQzQwLjEwMjc5MDUsMTYuOTk3OTE3MiA0MC45OTc5NjU3LDE3Ljg5Mzk4MyA0MC45OTc5NjU3LDE4Ljk5NTgzNDMgQzQwLjk5Nzk2NTcsMjAuMDk3Njg1NiA0MC4xMDI3OTA1LDIwLjk5Mzc1MTUgMzkuMDAyMDM0MywyMC45OTM3NTE1IEMzNy45MDEyNzgyLDIwLjk5Mzc1MTUgMzcuMDA2MTAyOSwyMC4wOTc2ODU2IDM3LjAwNjEwMjksMTguOTk1ODM0MyBDMzcuMDA2MTAyOSwxNy44OTM5ODMgMzcuOTAxMjc4MiwxNi45OTc5MTcyIDM5LjAwMjAzNDMsMTYuOTk3OTE3MiBMMzkuMDAyMDM0MywxNi45OTc5MTcyIFogTTU1Ljk2NzQ1MSwzOS45NzM5NjQ2IEM1NS45Njc0NTEsNDEuMDc1ODE1OSA1NS4wNzIyNzU3LDQxLjk3MTg4MTcgNTMuOTcxNTE5Niw0MS45NzE4ODE3IEM1Mi44NzA3NjM0LDQxLjk3MTg4MTcgNTEuOTc1NTg4Miw0MS4wNzU4MTU5IDUxLjk3NTU4ODIsMzkuOTczOTY0NiBDNTEuOTc1NTg4MiwzOC44NzIxMTMyIDUyLjg3MDc2MzQsMzcuOTc2MDQ3NCA1My45NzE1MTk2LDM3Ljk3NjA0NzQgQzU1LjA3MjI3NTcsMzcuOTc2MDQ3NCA1NS45Njc0NTEsMzguODcyMTEzMiA1NS45Njc0NTEsMzkuOTczOTY0NiBMNTUuOTY3NDUxLDM5Ljk3Mzk2NDYgWiBNMzkuMDAyMDM0MywyMi45OTE2Njg3IEMzOS42NjY2Nzk1LDIyLjk5MTY2ODcgNDAuMjg1NDE4MiwyMi44MTI4NTUxIDQwLjgzNzI5MzIsMjIuNTIzMTU3MSBMNTEuMDA0NTY3NiwzNy4zMjY3MjQzIEM1MC41ODg0MTU5LDM3Ljc5MjIzOSA1MC4yODMwMzg0LDM4LjM1MjY1NDggNTAuMTIyMzY1OSwzOC45NzUwMDYgTDI3Ljg4MTcwMjcsMzguOTc1MDA2IEMyNy43MjEwMzAyLDM4LjM1MjY1NDggMjcuNDE1NjUyNywzNy43OTIyMzkgMjYuOTk5NTAxLDM3LjMyNjcyNDMgTDM3LjE2Njc3NTQsMjIuNTIzMTU3MSBDMzcuNzE4NjUwNCwyMi44MTI4NTUxIDM4LjMzNzM4OTIsMjIuOTkxNjY4NyAzOS4wMDIwMzQzLDIyLjk5MTY2ODcgTDM5LjAwMjAzNDMsMjIuOTkxNjY4NyBaIE0yNC4wMzI1NDksNDMuOTY5Nzk4OSBDMjUuODg2NzY5Myw0My45Njk3OTg5IDI3LjQzNjYxLDQyLjY5MTEzMTkgMjcuODgxNzAyNyw0MC45NzI5MjMxIEw1MC4xMjIzNjU5LDQwLjk3MjkyMzEgQzUwLjU2NzQ1ODYsNDIuNjkxMTMxOSA1Mi4xMTcyOTk0LDQzLjk2OTc5ODkgNTMuOTcxNTE5Niw0My45Njk3OTg5IEM1Ni4xNzMwMzE5LDQzLjk2OTc5ODkgNTcuOTYzMzgyMyw0Mi4xNzc2NjcyIDU3Ljk2MzM4MjMsMzkuOTczOTY0NiBDNTcuOTYzMzgyMywzNy43NzAyNjE5IDU2LjE3MzAzMTksMzUuOTc4MTMwMiA1My45NzE1MTk2LDM1Ljk3ODEzMDIgQzUzLjUxMTQ1NzQsMzUuOTc4MTMwMiA1My4wNzYzNDQ0LDM2LjA3MjAzMjMgNTIuNjYzMTg2NiwzNi4yMTU4ODI0IEw0Mi4zMzcyMzU2LDIxLjE4MDU1NjcgQzQyLjc1MDM5MzQsMjAuNTUyMjExOCA0Mi45OTM4OTcxLDE5LjgwMjk5MjkgNDIuOTkzODk3MSwxOC45OTU4MzQzIEM0Mi45OTM4OTcxLDE2Ljc5MjEzMTcgNDEuMjAzNTQ2NiwxNSAzOS4wMDIwMzQzLDE1IEMzNi44MDA1MjIsMTUgMzUuMDEwMTcxNiwxNi43OTIxMzE3IDM1LjAxMDE3MTYsMTguOTk1ODM0MyBDMzUuMDEwMTcxNiwxOS44MDI5OTI5IDM1LjI1MzY3NTIsMjAuNTUyMjExOCAzNS42NjY4MzMsMjEuMTgwNTU2NyBMMjUuMzQwODgyLDM2LjIxNTg4MjQgQzI0LjkyNzcyNDMsMzYuMDcyMDMyMyAyNC40OTI2MTEyLDM1Ljk3ODEzMDIgMjQuMDMyNTQ5LDM1Ljk3ODEzMDIgQzIxLjgzMTAzNjcsMzUuOTc4MTMwMiAyMC4wNDA2ODYzLDM3Ljc3MDI2MTkgMjAuMDQwNjg2MywzOS45NzM5NjQ2IEMyMC4wNDA2ODYzLDQyLjE3NzY2NzIgMjEuODMxMDM2Nyw0My45Njk3OTg5IDI0LjAzMjU0OSw0My45Njk3OTg5IEwyNC4wMzI1NDksNDMuOTY5Nzk4OSBaIiBpZD0iQW1hem9uLU1hbmFnZWQtU3RyZWFtaW5nLWZvci1LYWZrYS1JY29uXzY0X1NxdWlkIiBmaWxsPSIjRkZGRkZGIj48L3BhdGg+CiAgICA8L2c+Cjwvc3ZnPg==',
+  kinesis: 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB3aWR0aD0iODBweCIgaGVpZ2h0PSI4MHB4IiB2aWV3Qm94PSIwIDAgODAgODAiIHZlcnNpb249IjEuMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayI+CiAgICA8IS0tIEdlbmVyYXRvcjogU2tldGNoIDY0ICg5MzUzNykgLSBodHRwczovL3NrZXRjaC5jb20gLS0+CiAgICA8dGl0bGU+SWNvbi1BcmNoaXRlY3R1cmUvNjQvQXJjaF9BbWF6b24tS2luZXNpcy1EYXRhLUFuYWx5dGljc182NDwvdGl0bGU+CiAgICA8ZGVzYz5DcmVhdGVkIHdpdGggU2tldGNoLjwvZGVzYz4KICAgIDxkZWZzPgogICAgICAgIDxsaW5lYXJHcmFkaWVudCB4MT0iMCUiIHkxPSIxMDAlIiB4Mj0iMTAwJSIgeTI9IjAlIiBpZD0ibGluZWFyR3JhZGllbnQtMSI+CiAgICAgICAgICAgIDxzdG9wIHN0b3AtY29sb3I9IiM0RDI3QTgiIG9mZnNldD0iMCUiPjwvc3RvcD4KICAgICAgICAgICAgPHN0b3Agc3RvcC1jb2xvcj0iI0ExNjZGRiIgb2Zmc2V0PSIxMDAlIj48L3N0b3A+CiAgICAgICAgPC9saW5lYXJHcmFkaWVudD4KICAgIDwvZGVmcz4KICAgIDxnIGlkPSJJY29uLUFyY2hpdGVjdHVyZS82NC9BcmNoX0FtYXpvbi1LaW5lc2lzLURhdGEtQW5hbHl0aWNzXzY0IiBzdHJva2U9Im5vbmUiIHN0cm9rZS13aWR0aD0iMSIgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIj4KICAgICAgICA8ZyBpZD0iSWNvbi1BcmNoaXRlY3R1cmUtQkcvNjQvQW5hbHl0aWNzIiBmaWxsPSJ1cmwoI2xpbmVhckdyYWRpZW50LTEpIj4KICAgICAgICAgICAgPHJlY3QgaWQ9IlJlY3RhbmdsZSIgeD0iMCIgeT0iMCIgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIj48L3JlY3Q+CiAgICAgICAgPC9nPgogICAgICAgIDxnIGlkPSJJY29uLVNlcnZpY2UvNjQvQW1hem9uLUtpbmVzaXMtRGF0YS1BbmFseXRpY3MiIHRyYW5zZm9ybT0idHJhbnNsYXRlKDguMDAwMDAwLCA4LjAwMDAwMCkiIGZpbGw9IiNGRkZGRkYiPgogICAgICAgICAgICA8cGF0aCBkPSJNMTEsNTQgTDEzLDU0IEMxMyw0OS4wMTMgMTQuNjk5LDQzLjQ5MyAyNy4wMTYsNDAuMTA2IEwyNy4wMTYsMzguMDM5IEMxMi44NDksNDEuNzg4IDExLDQ4LjUyMSAxMSw1NCBMMTEsNTQgWiBNMTcsNjAgTDE5LDYwIEMxOSw1NS4zOTkgMTkuMDE2LDQ5LjczMyAyNy4wMTYsNDUuNzgxIEwyNy4wMTYsNDMuNTY1IEMxNy4wMDgsNDguMDUyIDE3LDU0Ljk0MiAxNyw2MCBMMTcsNjAgWiBNNTcsMzkgTDMxLDM5IEwzMSw1OCBMMzMsNTggTDMzLDQ5IEMzMyw0OC40NDggMzMuNDQ3LDQ4IDM0LDQ4IEwzOCw0OCBDMzguNTUzLDQ4IDM5LDQ4LjQ0OCAzOSw0OSBMMzksNTggTDQxLDU4IEw0MSw0NiBDNDEsNDUuNDQ4IDQxLjQ0Nyw0NSA0Miw0NSBMNDYsNDUgQzQ2LjU1Myw0NSA0Nyw0NS40NDggNDcsNDYgTDQ3LDU4IEw0OSw1OCBMNDksNDMgQzQ5LDQyLjQ0OCA0OS40NDcsNDIgNTAsNDIgTDU0LDQyIEM1NC41NTMsNDIgNTUsNDIuNDQ4IDU1LDQzIEw1NSw1OCBMNTcsNTggTDU3LDM5IFogTTUxLDU4IEw1Myw1OCBMNTMsNDQgTDUxLDQ0IEw1MSw1OCBaIE00Myw1OCBMNDUsNTggTDQ1LDQ3IEw0Myw0NyBMNDMsNTggWiBNMzUsNTggTDM3LDU4IEwzNyw1MCBMMzUsNTAgTDM1LDU4IFogTTU5LDM4IEw1OSw1OSBDNTksNTkuNTUyIDU4LjU1Myw2MCA1OCw2MCBMMzAsNjAgQzI5LjQ0Nyw2MCAyOSw1OS41NTIgMjksNTkgTDI5LDM4IEMyOSwzNy40NDggMjkuNDQ3LDM3IDMwLDM3IEw1OCwzNyBDNTguNTUzLDM3IDU5LDM3LjQ0OCA1OSwzOCBMNTksMzggWiBNNywxOCBMNSwxOCBDNSwyNS4zOTYgMTUuMDM5LDMwLjA4IDM0Ljg5MywzMiBDMTUuMDM5LDMzLjkyIDUsMzguNjA0IDUsNDYgTDcsNDYgQzcsNDEuMTQ1IDEzLjc1NiwzMyA1OSwzMyBMNTksMzEgQzEzLjc1NiwzMSA3LDIyLjg1NSA3LDE4IEw3LDE4IFogTTEzLDEwIEwxMSwxMCBDMTEsMTkuMzk2IDE2LjcwMywyOSA1OSwyOSBMNTksMjcgQzE4LjQ2NSwyNyAxMywxOC40MDYgMTMsMTAgTDEzLDEwIFogTTU5LDIzIEw1OSwyNSBDNDAuNjYzLDI1IDI4LjcyOCwyMi42NDEgMjIuNTEsMTcuNzg4IEMxNywxMy40ODggMTcsOC4wMDQgMTcsNCBMMTksNCBDMTksMTEuNTY2IDE5LDIzIDU5LDIzIEw1OSwyMyBaIiBpZD0iQW1hem9uLUtpbmVzaXMtRGF0YS1BbmFseXRpY3NfSWNvbl82NF9TcXVpZCI+PC9wYXRoPgogICAgICAgIDwvZz4KICAgIDwvZz4KPC9zdmc+',
+  cognito: 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB3aWR0aD0iODBweCIgaGVpZ2h0PSI4MHB4IiB2aWV3Qm94PSIwIDAgODAgODAiIHZlcnNpb249IjEuMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayI+CiAgICA8IS0tIEdlbmVyYXRvcjogU2tldGNoIDY0ICg5MzUzNykgLSBodHRwczovL3NrZXRjaC5jb20gLS0+CiAgICA8dGl0bGU+SWNvbi1BcmNoaXRlY3R1cmUvNjQvQXJjaF9BbWF6b24tQ29nbml0b182NDwvdGl0bGU+CiAgICA8ZGVzYz5DcmVhdGVkIHdpdGggU2tldGNoLjwvZGVzYz4KICAgIDxkZWZzPgogICAgICAgIDxsaW5lYXJHcmFkaWVudCB4MT0iMCUiIHkxPSIxMDAlIiB4Mj0iMTAwJSIgeTI9IjAlIiBpZD0ibGluZWFyR3JhZGllbnQtMSI+CiAgICAgICAgICAgIDxzdG9wIHN0b3AtY29sb3I9IiNCRDA4MTYiIG9mZnNldD0iMCUiPjwvc3RvcD4KICAgICAgICAgICAgPHN0b3Agc3RvcC1jb2xvcj0iI0ZGNTI1MiIgb2Zmc2V0PSIxMDAlIj48L3N0b3A+CiAgICAgICAgPC9saW5lYXJHcmFkaWVudD4KICAgIDwvZGVmcz4KICAgIDxnIGlkPSJJY29uLUFyY2hpdGVjdHVyZS82NC9BcmNoX0FtYXpvbi1Db2duaXRvXzY0IiBzdHJva2U9Im5vbmUiIHN0cm9rZS13aWR0aD0iMSIgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIj4KICAgICAgICA8ZyBpZD0iSWNvbi1BcmNoaXRlY3R1cmUtQkcvNjQvU2VjdXJpdHktSWRlbnRpdHktQ29tcGxpYW5jZSIgZmlsbD0idXJsKCNsaW5lYXJHcmFkaWVudC0xKSI+CiAgICAgICAgICAgIDxyZWN0IGlkPSJSZWN0YW5nbGUiIHg9IjAiIHk9IjAiIHdpZHRoPSI4MCIgaGVpZ2h0PSI4MCI+PC9yZWN0PgogICAgICAgIDwvZz4KICAgICAgICA8cGF0aCBkPSJNMTYuOTYzNTYwOSwzNS44MDc5MjI1IEwyOS44Njg4MTkyLDM1LjgwNzkyMjUgTDI5Ljg2ODgxOTIsMzMuODI1Mzg0MSBMMTYuOTYzNTYwOSwzMy44MjUzODQxIEwxNi45NjM1NjA5LDM1LjgwNzkyMjUgWiBNNjEuMzc1NTE4Myw1MC4yMzA4ODk1IEw2Mi43NzkyMTMzLDUxLjYzMjU0NDEgTDU1LjQwNzMzMjcsNTguOTkzNzA5MyBDNTUuMjEyNzYxMSw1OS4xODcwMDY3IDU0Ljk1ODYyNjgsNTkuMjg0MTUxMSA1NC43MDU0ODUyLDU5LjI4NDE1MTEgQzU0LjQ1MTM1MDksNTkuMjg0MTUxMSA1NC4xOTcyMTY2LDU5LjE4NzAwNjcgNTQuMDAzNjM3Nyw1OC45OTM3MDkzIEw1MC4yOTQ4NjUsNTUuMjkxMzE4OCBMNTEuNjk4NTYsNTMuODg5NjY0MSBMNTQuNzA1NDg1Miw1Ni44OTEyMjczIEw2MS4zNzU1MTgzLDUwLjIzMDg4OTUgWiBNNjUuOTQzOTc5OCw1NS42OTM3NzQxIEM2NS43MTc2NDE0LDU3LjU1NzM2MDIgNjQuOTU5MjA5Myw1OS4yOTEwOSA2My43NDcxMDc3LDYwLjcwODYwNSBDNjIuODg2NDI2Miw2MS43MTU3MzQ1IDYxLjc5OTQwNjQsNjIuNTQ4NDAwNiA2MC42MDQxODEsNjMuMTE1NDA2NiBDNTkuMDAwOTUwOCw2My44NzU3MTAxIDU3LjIyMDAyNTEsNjQuMTY0MTY5NCA1NS40NDYwNDg1LDYzLjk0ODA3MjcgQzUzLjcyMDcxNDcsNjMuNzM3OTIzNyA1Mi4wOTQ2NTIyLDYzLjA1NzkxMyA1MC43Mzk2LDYxLjk4MjM4NTkgQzQ4LjEzNjcwODcsNTkuOTE1NTg5NiA0Ni44MjIzNTc4LDU2LjcxMDgxNjMgNDcuMjIyNDIwOCw1My40MDg4OTg1IEM0Ny42MDA2NDQxLDUwLjI4ODM4MzEgNDkuNDkxNzYwOCw0Ny41NjYzNTc4IDUyLjI4MDI4OTMsNDYuMTI3MDM1IEM1My42MTY0Nzk5LDQ1LjQzODEwMjkgNTUuMDc5NzM3Nyw0NS4wODQyMTk4IDU2LjU2OTc5ODcsNDUuMDg0MjE5OCBDNTYuOTUxOTkyOCw0NS4wODQyMTk4IDU3LjMzNzE2NTIsNDUuMTA4MDEwMiA1Ny43MjEzNDQ4LDQ1LjE1NDU5OTkgQzYwLjgzNDQ5MDIsNDUuNTM0MjU2IDYzLjU0OTU1OCw0Ny40MzY1MDE2IDY0Ljk4MTA0ODksNTAuMjQyNzg0NyBDNjUuODM5NzQ1LDUxLjkyNTk1OTggNjYuMTcyMzAzNiw1My44MTEzNTM4IDY1Ljk0Mzk3OTgsNTUuNjkzNzc0MSBMNjUuOTQzOTc5OCw1NS42OTM3NzQxIFogTTY2Ljc1MDA2Miw0OS4zNDM3MDM1IEM2NS4wMTc3NzkzLDQ1Ljk0NzYxNTIgNjEuNzMxOTAyLDQzLjY0NTg4ODEgNTcuOTYxNTgxMSw0My4xODY5MzA1IEM1NS42ODEzMjEzLDQyLjkwODM4MzggNTMuNDAzMDQ2OCw0My4zMTY3ODY4IDUxLjM2ODk3OTYsNDQuMzY1NTQ5NiBDNDcuOTk1NzQzNiw0Ni4xMDYyMTgzIDQ1LjcwODUzNDcsNDkuMzk4MjIzMyA0NS4yNTA4OTQ0LDUzLjE3MDk5MzkgQzQ0Ljc2ODQzNjMsNTcuMTYwODUyNSA0Ni4zNTc3Njg1LDYxLjAzNTcyMzggNDkuNTA0NjY2MSw2My41MzQ3MTM1IEM1MS4xNDU2MTkzLDY0LjgzNzI0MTIgNTMuMTE3MTQ1Nyw2NS42NjA5ODU5IDU1LjIwNDgxOTQsNjUuOTE1NzQyMSBDNTUuNjY3NDIzMyw2NS45NzIyNDQ1IDU2LjEzMDAyNzIsNjYgNTYuNTkxNjM4Myw2NiBDNTguMjcxMzA3Myw2NiA1OS45MzAxMjk0LDY1LjYyOTI2NTMgNjEuNDU1OTI4LDY0LjkwNTYzODggQzYyLjkwMjMwOTYsNjQuMjE5NjgwNSA2NC4yMTc2NTMzLDYzLjIxMjU1MSA2NS4yNTcwMjI5LDYxLjk5NTI3MjQgQzY2LjcyMzI1ODgsNjAuMjgwMzc2NyA2Ny42NDI1MTAzLDU4LjE4Mzg0MjMgNjcuOTE1NTA2MSw1NS45MzE2Nzg3IEM2OC4xOTE0ODAxLDUzLjY1NjcxNTggNjcuNzg4NDM5LDUxLjM3ODc3OTIgNjYuNzUwMDYyLDQ5LjM0MzcwMzUgTDY2Ljc1MDA2Miw0OS4zNDM3MDM1IFogTTI2Ljg5MDY4MjcsNDEuNzU1NTM3OCBMMzAuODYxNTMxNCw0MS43NTU1Mzc4IEwzMC44NjE1MzE0LDM5Ljc3Mjk5OTQgTDI2Ljg5MDY4MjcsMzkuNzcyOTk5NCBMMjYuODkwNjgyNyw0MS43NTU1Mzc4IFogTTE2Ljk2MzU2MDksNDEuNzU1NTM3OCBMMjQuOTA1MjU4Myw0MS43NTU1Mzc4IEwyNC45MDUyNTgzLDM5Ljc3Mjk5OTQgTDE2Ljk2MzU2MDksMzkuNzcyOTk5NCBMMTYuOTYzNTYwOSw0MS43NTU1Mzc4IFogTTE2LjEwNTg1NzYsMTUuOTgyNTM4NCBMNjAuNTA3ODg3OSwxNS45ODI1Mzg0IEM2MS42NzczMDI4LDE1Ljk4MjUzODQgNjIuNjI4MzIxMSwxNy4xMzkzNDk2IDYyLjYyODMyMTEsMTguNTYwODI5NiBMNjIuNjI4MzIxMSwyNS44OTUyMzA1IEw1OS42NTAxODQ1LDI1Ljg5NTIzMDUgTDU5LjY1MDE4NDUsMjAuOTM4ODg0NCBDNTkuNjUwMTg0NSwyMC4zOTE3MDM4IDU5LjIwNjQ0MjIsMTkuOTQ3NjE1MiA1OC42NTc0NzI0LDE5Ljk0NzYxNTIgTDM1LjgyNTA5MjMsMTkuOTQ3NjE1MiBDMzUuMjc2MTIyNCwxOS45NDc2MTUyIDM0LjgzMjM4MDEsMjAuMzkxNzAzOCAzNC44MzIzODAxLDIwLjkzODg4NDQgTDM0LjgzMjM4MDEsMjUuODk1MjMwNSBMMTMuOTg1NDI0NCwyNS44OTUyMzA1IEwxMy45ODU0MjQ0LDE4LjU2MDgyOTYgQzEzLjk4NTQyNDQsMTcuMTYzMTQgMTQuOTU3Mjg5NiwxNS45ODI1Mzg0IDE2LjEwNTg1NzYsMTUuOTgyNTM4NCBMMTYuMTA1ODU3NiwxNS45ODI1Mzg0IFogTTQ3LjI1NjE3MywyNS42MDc3NjI0IEM0OS41NjEyNTA3LDI1LjYwNzc2MjQgNTEuNDM2NDg0LDI3LjQ2MTQzNTggNTEuNDM2NDg0LDI5LjczOTM3MjUgQzUxLjQzNjQ4NCwzMS4yNDExNDUzIDUwLjYwNzU2OTMsMzIuNjIyOTc0NiA0OS4yNzMzNjQyLDMzLjM0NjYwMTEgQzQ4LjAwNjY2MzQsMzQuMDMzNTUwNyA0Ni40Nzk4NzIxLDM0LjAyNDYyOTIgNDUuMjMwMDQ3NCwzMy4zNDc1OTI0IEM0My45MDA4MDU4LDMyLjYyMTk4MzMgNDMuMDc1ODYyLDMxLjI0MDE1NCA0My4wNzU4NjIsMjkuNzM5MzcyNSBDNDMuMDc1ODYyLDI3LjQ2MTQzNTggNDQuOTUwMTAyNiwyNS42MDc3NjI0IDQ3LjI1NjE3MywyNS42MDc3NjI0IEw0Ny4yNTYxNzMsMjUuNjA3NzYyNCBaIE0xMy45ODU0MjQ0LDQ3LjEwODM5MTUgTDEzLjk4NTQyNDQsMjcuODc3NzY4OSBMMzQuODMyMzgwMSwyNy44Nzc3Njg5IEwzNC44MzIzODAxLDQ0LjcyOTM0NTQgQzM0LjgzMjM4MDEsNDUuMjc3NTE3MyAzNS4yNzYxMjI0LDQ1LjcyMDYxNDYgMzUuODI1MDkyMyw0NS43MjA2MTQ2IEw0Ni4yMDI5MDU0LDQ1LjcyMDYxNDYgTDQ2LjIwMjkwNTQsNDMuNzM4MDc2MiBMMzcuOTExNzczMyw0My43MzgwNzYyIEMzNy45OTgxMzkyLDM5Ljc3MTAxNjggNDAuNjM1Nzc1NSwzNi4zNDQxOTkyIDQ0LjQzMzg5MjMsMzUuMjQ5ODM4IEM0Ni4xODkwMDc0LDM2LjA2OTYxNzYgNDguMjg0NjIyOCwzNi4wNzc1NDc4IDUwLjA2NjU0MTIsMzUuMjQ4ODQ2NyBDNTIuMjI4NjY4MywzNS44NzMzNDYzIDU0LjEyMDc3NzcsMzcuMzE3NjI1NSA1NS4yOTMxNzA4LDM5LjI1MzU3NDMgTDU2Ljk5MTcwMTMsMzguMjI2NjE5NCBDNTUuNzg4NTM0MiwzNi4yNDMwODk3IDUzLjk2MjkzNjUsMzQuNjk0NzI3MiA1MS44NDU0ODE0LDMzLjc5NDY1NDggQzUyLjgzODE5MzYsMzIuNjk0MzQ2IDUzLjQyMTkwODMsMzEuMjYyOTUzMiA1My40MjE5MDgzLDI5LjczOTM3MjUgQzUzLjQyMTkwODMsMjYuMzY4MDY1OSA1MC42NTUyMTk1LDIzLjYyNTIyNCA0Ny4yNTYxNzMsMjMuNjI1MjI0IEM0My44NTYxMzM4LDIzLjYyNTIyNCA0MS4wOTA0Mzc3LDI2LjM2ODA2NTkgNDEuMDkwNDM3NywyOS43MzkzNzI1IEM0MS4wOTA0Mzc3LDMxLjI1NzAwNTYgNDEuNjY4MTk2MiwzMi42ODM0NDIgNDIuNjUzOTU5MywzMy43ODM3NTA4IEM0MC4wMDA0Mzk3LDM0Ljg5OTkxOTkgMzcuOTI3NjU2NywzNi45OTI0ODkyIDM2LjgxNzgwNDUsMzkuNTcyNzYzIEwzNi44MTc4MDQ1LDIxLjkzMDE1MzYgTDU3LjY2NDc2MDIsMjEuOTMwMTUzNiBMNTcuNjY0NzYwMiwzNy43OTA0NjA5IEw1OS42NTAxODQ1LDM3Ljc5MDQ2MDkgTDU5LjY1MDE4NDUsMjcuODc3NzY4OSBMNjIuNjI4MzIxMSwyNy44Nzc3Njg5IEw2Mi42MjkzMTM4LDQyLjc0NjgwNyBMNjQuNjE0NzM4Miw0Mi43NDY4MDcgTDY0LjYxMzc0NTQsMTguNTYwODI5NiBDNjQuNjEzNzQ1NCwxNi4wNDU5Nzk2IDYyLjc3MjI2NDMsMTQgNjAuNTA3ODg3OSwxNCBMMTYuMTA1ODU3NiwxNCBDMTMuODQxNDgxMSwxNCAxMiwxNi4wNDU5Nzk2IDEyLDE4LjU2MDgyOTYgTDEyLDQ3LjEwODM5MTUgQzEyLDQ5LjYyMzI0MTUgMTMuODQxNDgxMSw1MS42NjgyMjk4IDE2LjEwNTg1NzYsNTEuNjY4MjI5OCBMNDIuNzc0MDc3NSw1MS42NjgyMjk4IEw0Mi43NzQwNzc1LDQ5LjY4NTY5MTQgTDE2LjEwNTg1NzYsNDkuNjg1NjkxNCBDMTQuOTU3Mjg5Niw0OS42ODU2OTE0IDEzLjk4NTQyNDQsNDguNTA2MDgxMSAxMy45ODU0MjQ0LDQ3LjEwODM5MTUgTDEzLjk4NTQyNDQsNDcuMTA4MzkxNSBaIiBpZD0iQW1hem9uLUNvZ25pdG9fSWNvbl82NF9TcXVpZCIgZmlsbD0iI0ZGRkZGRiI+PC9wYXRoPgogICAgPC9nPgo8L3N2Zz4=',
+  secrets: 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB3aWR0aD0iODBweCIgaGVpZ2h0PSI4MHB4IiB2aWV3Qm94PSIwIDAgODAgODAiIHZlcnNpb249IjEuMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayI+CiAgICA8IS0tIEdlbmVyYXRvcjogU2tldGNoIDY0ICg5MzUzNykgLSBodHRwczovL3NrZXRjaC5jb20gLS0+CiAgICA8dGl0bGU+SWNvbi1BcmNoaXRlY3R1cmUvNjQvQXJjaF9BV1MtU2VjcmV0cy1NYW5hZ2VyXzY0PC90aXRsZT4KICAgIDxkZXNjPkNyZWF0ZWQgd2l0aCBTa2V0Y2guPC9kZXNjPgogICAgPGRlZnM+CiAgICAgICAgPGxpbmVhckdyYWRpZW50IHgxPSIwJSIgeTE9IjEwMCUiIHgyPSIxMDAlIiB5Mj0iMCUiIGlkPSJsaW5lYXJHcmFkaWVudC0xIj4KICAgICAgICAgICAgPHN0b3Agc3RvcC1jb2xvcj0iI0JEMDgxNiIgb2Zmc2V0PSIwJSI+PC9zdG9wPgogICAgICAgICAgICA8c3RvcCBzdG9wLWNvbG9yPSIjRkY1MjUyIiBvZmZzZXQ9IjEwMCUiPjwvc3RvcD4KICAgICAgICA8L2xpbmVhckdyYWRpZW50PgogICAgPC9kZWZzPgogICAgPGcgaWQ9Ikljb24tQXJjaGl0ZWN0dXJlLzY0L0FyY2hfQVdTLVNlY3JldHMtTWFuYWdlcl82NCIgc3Ryb2tlPSJub25lIiBzdHJva2Utd2lkdGg9IjEiIGZpbGw9Im5vbmUiIGZpbGwtcnVsZT0iZXZlbm9kZCI+CiAgICAgICAgPGcgaWQ9Ikljb24tQXJjaGl0ZWN0dXJlLUJHLzY0L1NlY3VyaXR5LUlkZW50aXR5LUNvbXBsaWFuY2UiIGZpbGw9InVybCgjbGluZWFyR3JhZGllbnQtMSkiPgogICAgICAgICAgICA8cmVjdCBpZD0iUmVjdGFuZ2xlIiB4PSIwIiB5PSIwIiB3aWR0aD0iODAiIGhlaWdodD0iODAiPjwvcmVjdD4KICAgICAgICA8L2c+CiAgICAgICAgPHBhdGggZD0iTTM4Ljc2LDQzLjM2IEMzOC43Niw0NC4wNDQgMzkuMzE3LDQ0LjYgNDAsNDQuNiBDNDAuNjg0LDQ0LjYgNDEuMjQsNDQuMDQ0IDQxLjI0LDQzLjM2IEM0MS4yNCw0Mi42NzYgNDAuNjg0LDQyLjEyIDQwLDQyLjEyIEMzOS4zMTcsNDIuMTIgMzguNzYsNDIuNjc2IDM4Ljc2LDQzLjM2IEwzOC43Niw0My4zNiBaIE0zNi43Niw0My4zNiBDMzYuNzYsNDEuNTczIDM4LjIxMyw0MC4xMiA0MCw0MC4xMiBDNDEuNzg3LDQwLjEyIDQzLjI0LDQxLjU3MyA0My4yNCw0My4zNiBDNDMuMjQsNDQuNzk2IDQyLjI5Niw0Ni4wMDIgNDEsNDYuNDI2IEw0MSw0OSBMMzksNDkgTDM5LDQ2LjQyNiBDMzcuNzA0LDQ2LjAwMiAzNi43Niw0NC43OTYgMzYuNzYsNDMuMzYgTDM2Ljc2LDQzLjM2IFogTTQ5LDM4IEwzMSwzOCBMMzEsNTEgTDQ5LDUxIEw0OSw0OCBMNDYsNDggTDQ2LDQ2IEw0OSw0NiBMNDksNDMgTDQ2LDQzIEw0Niw0MSBMNDksNDEgTDQ5LDM4IFogTTM0LDM2IEw0NS45OTksMzYgTDQ2LDMxIEM0Ni4wMDEsMjguMzg0IDQzLjE0MywyNi4wMDIgNDAuMDA0LDI2IEw0MC4wMDEsMjYgQzM4LjQ3MiwyNiAzNi45MjgsMjYuNTc0IDM1Ljc2MywyNy41NzUgQzM0LjY0MywyOC41MzcgMzQsMjkuNzg2IDM0LDMxLjAwMSBMMzQsMzYgWiBNNDgsMzEuMDAxIEw0Ny45OTksMzYgTDUwLDM2IEM1MC41NTMsMzYgNTEsMzYuNDQ4IDUxLDM3IEw1MSw1MiBDNTEsNTIuNTUyIDUwLjU1Myw1MyA1MCw1MyBMMzAsNTMgQzI5LjQ0Nyw1MyAyOSw1Mi41NTIgMjksNTIgTDI5LDM3IEMyOSwzNi40NDggMjkuNDQ3LDM2IDMwLDM2IEwzMiwzNiBMMzIsMzEgQzMyLjAwMSwyOS4yMDIgMzIuODk3LDI3LjQwMSAzNC40NTksMjYuMDU4IEMzNS45ODIsMjQuNzUgMzguMDAxLDI0IDQwLjAwMSwyNCBMNDAuMDA0LDI0IEM0NC4yNjUsMjQuMDAyIDQ4LjAwMSwyNy4yNzMgNDgsMzEuMDAxIEw0OCwzMS4wMDEgWiBNMTkuMjA3LDU1LjA0OSBMMjAuODI4LDUzLjg3NyBDMTguMDkzLDUwLjA5NyAxNi41ODEsNDUuNjYyIDE2LjM5Niw0MSBMMTksNDEgTDE5LDM5IEwxNi4zOTksMzkgQzE2LjU5OCwzNC4zNjYgMTguMTA4LDI5Ljk1NyAyMC44MjgsMjYuMTk4IEwxOS4yMDcsMjUuMDI1IEMxNi4yMzksMjkuMTI4IDE0LjU5OSwzMy45NDIgMTQuMzk5LDM5IEwxMiwzOSBMMTIsNDEgTDE0LjM5Niw0MSBDMTQuNTgyLDQ2LjA4NiAxNi4yMjQsNTAuOTI2IDE5LjIwNyw1NS4wNDkgTDE5LjIwNyw1NS4wNDkgWiBNNTMuODM4LDU5LjIwOCBDNTAuMDY5LDYxLjkzNiA0NS42NDgsNjMuNDQ2IDQxLDYzLjYzOSBMNDEsNjEgTDM5LDYxIEwzOSw2My42MzkgQzM0LjM1Miw2My40NDcgMjkuOTMsNjEuOTM3IDI2LjE1OSw1OS4yMDggTDI0Ljk4OCw2MC44MjggQzI5LjEsNjMuODA1IDMzLjkyOCw2NS40NDUgMzksNjUuNjM5IEwzOSw2OCBMNDEsNjggTDQxLDY1LjYzOSBDNDYuMDcyLDY1LjQ0NSA1MC44OTgsNjMuODA1IDU1LjAxLDYwLjgyOCBMNTMuODM4LDU5LjIwOCBaIE0yNi4xNTksMjAuODY2IEMyOS45MywxOC4xMzggMzQuMzUyLDE2LjYyOCAzOSwxNi40MzYgTDM5LDE5IEw0MSwxOSBMNDEsMTYuNDM2IEM0NS42NDgsMTYuNjI4IDUwLjA2OSwxOC4xMzggNTMuODM4LDIwLjg2NiBMNTUuMDEsMTkuMjQ2IEM1MC44OTgsMTYuMjcgNDYuMDcyLDE0LjYzIDQxLDE0LjQzNiBMNDEsMTIgTDM5LDEyIEwzOSwxNC40MzYgQzMzLjkyOCwxNC42MjkgMjkuMSwxNi4yNjkgMjQuOTg4LDE5LjI0NiBMMjYuMTU5LDIwLjg2NiBaIE02NS41OTksMzkgQzY1LjM5OSwzMy45NDIgNjMuNzU5LDI5LjEyOCA2MC43OSwyNS4wMjUgTDU5LjE2OSwyNi4xOTggQzYxLjg5LDI5Ljk1NyA2My40LDM0LjM2NiA2My41OTksMzkgTDYxLDM5IEw2MSw0MSBMNjMuNjAyLDQxIEM2My40MTYsNDUuNjYyIDYxLjkwNSw1MC4wOTcgNTkuMTY5LDUzLjg3NyBMNjAuNzksNTUuMDQ5IEM2My43NzQsNTAuOTI2IDY1LjQxNSw0Ni4wODYgNjUuNjAyLDQxIEw2OCw0MSBMNjgsMzkgTDY1LjU5OSwzOSBaIE01Ni4zODYsMjUuMDY0IEw2NC4yMjYsMTcuMjI0IEw2Mi44MTIsMTUuODEgTDU0Ljk3MiwyMy42NSBMNTYuMzg2LDI1LjA2NCBaIE0yMy42MTIsNTUuMDEgTDE1Ljc3Miw2Mi44NSBMMTcuMTg2LDY0LjI2NCBMMjUuMDI2LDU2LjQyNCBMMjMuNjEyLDU1LjAxIFogTTI4LjY2NiwyNy4yNTMgTDEzLjgyNSwxMi40MTMgTDEyLjQxMSwxMy44MjcgTDI3LjI1MiwyOC42NjcgTDI4LjY2NiwyNy4yNTMgWiBNNTQuMTkzLDUyLjc4IEw2Ny41ODYsNjYuMTczIEw2Ni4xNzIsNjcuNTg3IEw1Mi43NzksNTQuMTk0IEw1NC4xOTMsNTIuNzggWiIgaWQ9IkFXUy1TZWNyZXRzLU1hbmFnZXJfSWNvbl82NF9TcXVpZCIgZmlsbD0iI0ZGRkZGRiI+PC9wYXRoPgogICAgPC9nPgo8L3N2Zz4=',
+  cloudwatch: 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB3aWR0aD0iODBweCIgaGVpZ2h0PSI4MHB4IiB2aWV3Qm94PSIwIDAgODAgODAiIHZlcnNpb249IjEuMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayI+CiAgICA8IS0tIEdlbmVyYXRvcjogU2tldGNoIDY0ICg5MzUzNykgLSBodHRwczovL3NrZXRjaC5jb20gLS0+CiAgICA8dGl0bGU+SWNvbi1BcmNoaXRlY3R1cmUvNjQvQXJjaF9BbWF6b24tQ2xvdWRXYXRjaF82NDwvdGl0bGU+CiAgICA8ZGVzYz5DcmVhdGVkIHdpdGggU2tldGNoLjwvZGVzYz4KICAgIDxkZWZzPgogICAgICAgIDxsaW5lYXJHcmFkaWVudCB4MT0iMCUiIHkxPSIxMDAlIiB4Mj0iMTAwJSIgeTI9IjAlIiBpZD0ibGluZWFyR3JhZGllbnQtMSI+CiAgICAgICAgICAgIDxzdG9wIHN0b3AtY29sb3I9IiNCMDA4NEQiIG9mZnNldD0iMCUiPjwvc3RvcD4KICAgICAgICAgICAgPHN0b3Agc3RvcC1jb2xvcj0iI0ZGNEY4QiIgb2Zmc2V0PSIxMDAlIj48L3N0b3A+CiAgICAgICAgPC9saW5lYXJHcmFkaWVudD4KICAgIDwvZGVmcz4KICAgIDxnIGlkPSJJY29uLUFyY2hpdGVjdHVyZS82NC9BcmNoX0FtYXpvbi1DbG91ZFdhdGNoXzY0IiBzdHJva2U9Im5vbmUiIHN0cm9rZS13aWR0aD0iMSIgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIj4KICAgICAgICA8ZyBpZD0iSWNvbi1BcmNoaXRlY3R1cmUtQkcvNjQvTWFuYWdlbWVudC1Hb3Zlcm5hbmNlIiBmaWxsPSJ1cmwoI2xpbmVhckdyYWRpZW50LTEpIj4KICAgICAgICAgICAgPHJlY3QgaWQ9IlJlY3RhbmdsZSIgeD0iMCIgeT0iMCIgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIj48L3JlY3Q+CiAgICAgICAgPC9nPgogICAgICAgIDxwYXRoIGQ9Ik01NS4wNTkyMzE1LDQ2Ljc3NzM3MDcgQzU1LjA1OTIzMTUsNDIuODY4MDI4MSA1MS44NTc1NTg4LDM5LjY4NzYzMDUgNDcuOTIyMDY0NiwzOS42ODc2MzA1IEM0My45ODY1NzA1LDM5LjY4NzYzMDUgNDAuNzg1OTAzLDQyLjg2ODAyODEgNDAuNzg1OTAzLDQ2Ljc3NzM3MDcgQzQwLjc4NTkwMyw1MC42ODY3MTMzIDQzLjk4NjU3MDUsNTMuODY3MTEwOCA0Ny45MjIwNjQ2LDUzLjg2NzExMDggQzUxLjg1NzU1ODgsNTMuODY3MTEwOCA1NS4wNTkyMzE1LDUwLjY4NjcxMzMgNTUuMDU5MjMxNSw0Ni43NzczNzA3IE01Ny4wNjk3MDExLDQ2Ljc3NzM3MDcgQzU3LjA2OTcwMTEsNTEuNzg4MTE5NCA1Mi45NjYzMzI3LDU1Ljg2NDIyMDcgNDcuOTIyMDY0Niw1NS44NjQyMjA3IEM0Mi44Nzg4MDE4LDU1Ljg2NDIyMDcgMzguNzc1NDMzNCw1MS43ODgxMTk0IDM4Ljc3NTQzMzQsNDYuNzc3MzcwNyBDMzguNzc1NDMzNCw0MS43NjY2MjE5IDQyLjg3ODgwMTgsMzcuNjkwNTIwNiA0Ny45MjIwNjQ2LDM3LjY5MDUyMDYgQzUyLjk2NjMzMjcsMzcuNjkwNTIwNiA1Ny4wNjk3MDExLDQxLjc2NjYyMTkgNTcuMDY5NzAxMSw0Ni43NzczNzA3IE02NS41MDk2NTIyLDYwLjQ3MzU1MDQgTDU4LjUwMTE1NTQsNTQuMjAyNjI1MyBDNTcuOTM1MjA4Miw1NC45OTQ0Nzk0IDU3LjI4MDgwMDQsNTUuNzE3NDMzMiA1Ni41NTQwMTU2LDU2LjM2MzQ5ODIgTDYzLjU1MjQ2MDEsNjIuNjMzNDI0OCBDNjQuMTQ5NTY5Niw2My4xNjg2NTAyIDY1LjA3ODQwNjUsNjMuMTE4NzIyNSA2NS42MTgyMTc2LDYyLjUyNTU4MDggQzY2LjE1NTAxMyw2MS45MzI0MzkyIDY2LjEwNjc2MTcsNjEuMDEwNzczIDY1LjUwOTY1MjIsNjAuNDczNTUwNCBNNDcuOTIyMDY0Niw1Ny42NjE2MTk3IEM1My45NjQ1MzA5LDU3LjY2MTYxOTcgNTguODgwMTI4OSw1Mi43Nzg2ODU5IDU4Ljg4MDEyODksNDYuNzc3MzcwNyBDNTguODgwMTI4OSw0MC43NzUwNTY5IDUzLjk2NDUzMDksMzUuODkzMTIxNyA0Ny45MjIwNjQ2LDM1Ljg5MzEyMTcgQzQxLjg4MDYwMzYsMzUuODkzMTIxNyAzNi45NjUwMDU2LDQwLjc3NTA1NjkgMzYuOTY1MDA1Niw0Ni43NzczNzA3IEMzNi45NjUwMDU2LDUyLjc3ODY4NTkgNDEuODgwNjAzNiw1Ny42NjE2MTk3IDQ3LjkyMjA2NDYsNTcuNjYxNjE5NyBNNjcuMTExOTk2NSw2My44NjI2NDU5IEM2Ni40MjY0MjY0LDY0LjYxNjU1NDkgNjUuNDc4NDksNjUgNjQuNTI4NTQzMSw2NSBDNjMuNzAwMjI5Niw2NSA2Mi44Njk5MDU3LDY0LjcwODQyMiA2Mi4yMDc0NTYsNjQuMTE3Mjc3NCBMNTQuOTMwNTYxNSw1Ny41OTg3MTA3IEM1Mi45MDcwMjM5LDU4Ljg5NjgzMjEgNTAuNTA1NTE4LDU5LjY1ODcyOTYgNDcuOTIyMDY0Niw1OS42NTg3Mjk2IEM0MC43NzE4Mjk3LDU5LjY1ODcyOTYgMzQuOTU0NTM2MSw1My44ODAwOTIxIDM0Ljk1NDUzNjEsNDYuNzc3MzcwNyBDMzQuOTU0NTM2MSwzOS42NzQ2NDkzIDQwLjc3MTgyOTcsMzMuODk2MDExOCA0Ny45MjIwNjQ2LDMzLjg5NjAxMTggQzU1LjA3MzMwNDgsMzMuODk2MDExOCA2MC44OTA1OTg1LDM5LjY3NDY0OTMgNjAuODkwNTk4NSw0Ni43NzczNzA3IEM2MC44OTA1OTg1LDQ4LjgxNTQyMTMgNjAuMzk5MDM4Nyw1MC43MzY2NDExIDU5LjU0NjU5OTYsNTIuNDUxMTU5OSBMNjYuODU1NjYxNiw1OC45OTA2OTYzIEM2OC4yNzUwNTMxLDYwLjI2NTg1MSA2OC4zODk2NDk5LDYyLjQ0OTY5MDcgNjcuMTExOTk2NSw2My44NjI2NDU5IE0yMS4yODAzMjc0LDI5LjM5MjUyOSBDMjEuMjgwMzI3NCwyOS45MTE3Nzc2IDIxLjMxMjQ5NDksMzAuNDI5MDI5IDIxLjM3MzgxNDMsMzAuOTI5MzA1MSBDMjEuNDA4OTk3NSwzMS4yMTM4OTMyIDIxLjMyMDUzNjgsMzEuNDk4NDgxNCAyMS4xMjk1NDIyLDMxLjcxMzE3MDcgQzIwLjk3Nzc1MTgsMzEuODgzOTIzNiAyMC43NzM2ODkxLDMxLjk5Njc2MDMgMjAuNTUwNTI3LDMyLjAzNDcwNTQgQzE4LjA3ODY1NDcsMzIuNjY4Nzg3OCAxNC4wMTA0Njk1LDM0LjU4ODAxMDQgMTQuMDEwNDY5NSw0MC4zNDU2NzgyIEMxNC4wMTA0Njk1LDQ0LjY5MzM4NjUgMTYuNDI0MDM4Miw0Ny4wOTI5MTQxIDE4LjQ0OTU4NjMsNDguMzQxMTA3NyBDMTkuMTQxMTg3OCw0OC43NzQ0ODA2IDE5Ljk1OTQ0ODksNDkuMDA1MTQ2OCAyMC44MjI5NDU2LDQ5LjAxNDEzMzggTDMyLjk0NTA3MTcsNDkuMDI1MTE3OSBMMzIuOTQzMDYxMyw1MS4wMjIyMjc4IEwyMC44MTE4ODgsNTEuMDExMjQzNyBDMTkuNTY2NDAyMSw1MC45OTgyNjI1IDE4LjM4NDI0Niw1MC42NjA3NTA5IDE3LjM4NDAzNzQsNTAuMDM0NjU2OSBDMTUuMzc2NTgzNiw0OC43OTc0NDc0IDEyLDQ1Ljg4OTY1NTMgMTIsNDAuMzQ1Njc4MiBDMTIsMzMuNjYyMzUgMTYuNTk5OTU0MywzMS4xOTE5MjUgMTkuMzAwMDE0OSwzMC4zMTkxODggQzE5LjI3OTkxMDIsMzAuMDExNjMzMSAxOS4yNjk4NTc5LDI5LjcwMjA4MSAxOS4yNjk4NTc5LDI5LjM5MjUyOSBDMTkuMjY5ODU3OSwyMy45MzI0MzA1IDIyLjk5ODI3MzcsMTguMjY5NjI1NCAyNy45NDIwMTgzLDE2LjIyMTU4OTIgQzMzLjcyNDEyODcsMTMuODE1MDcxNyAzOS44NTAwMjk0LDE1LjAwODM0NDkgNDQuMzI2MzM5OSwxOS40MTA5NzM3IEM0NS43MTM1NjM4LDIwLjc3NDk5OTggNDYuODU0NTA1MywyMi40MzE2MDI0IDQ3LjczMDA2NDgsMjQuMzQ3ODI5NCBDNDguOTA2MTg5NSwyMy4zODAyMjk2IDUwLjM1NTczOCwyMi44NDYwMDI3IDUxLjg4MzY5NDksMjIuODQ2MDAyNyBDNTQuODg2MzMxMiwyMi44NDYwMDI3IDU4LjI2NTkzMDUsMjUuMTA5NzI2OCA1OC44NjgwNjYxLDMwLjA2MDU2MjIgQzYxLjY3OTcwNzgsMzAuNzA0NjMwMiA2Ny42MjA2NDUzLDMyLjk1NTM3MzEgNjcuNjIwNjQ1Myw0MC40MjI1NjcgQzY3LjYyMDY0NTMsNDMuNDA0MjUyMSA2Ni42Nzk3NDU1LDQ1Ljg2NjY4ODYgNjQuODIzMDc2OSw0Ny43NDE5NzQ4IEw2My4zODk2MTIxLDQ2LjM0MTAwMjIgQzY0Ljg2MzI4NjMsNDQuODUzMTU1MyA2NS42MTAxNzU3LDQyLjg2MjAzNjcgNjUuNjEwMTc1Nyw0MC40MjI1NjcgQzY1LjYxMDE3NTcsMzMuODkxMDE5IDYwLjEwNTUxMDEsMzIuMjY2MzcwMSA1Ny43MzcxNzcsMzEuODcxOTQwOSBDNTcuNDY3Nzc0MSwzMS44MjcwMDYgNTcuMjI5NTMzNCwzMS42NzUyMjU2IDU3LjA3NTczMjUsMzEuNDUxNTQ5MyBDNTYuOTI1OTUyNSwzMS4yMzU4NjE0IDU2Ljg2ODY1NDEsMzAuOTcxMjQ0NCA1Ni45MTM4ODk3LDMwLjcxNDYxNTcgQzU2LjU4NTE3NzksMjYuNjYwNDgyNiA1NC4xNjA1NTE2LDI0Ljg0MzExMjYgNTEuODgzNjk0OSwyNC44NDMxMTI2IEM1MC40NDcyMTQ0LDI0Ljg0MzExMjYgNDkuMTAwMTk5OCwyNS41MzgxMDY5IDQ4LjE4NzQ0NjYsMjYuNzUwMzUyNiBDNDcuOTY1Mjg5NywyNy4wNDM5Mjc3IDQ3LjYwNDQxMDUsMjcuMTkzNzExIDQ3LjIzNDQ4NDEsMjcuMTM5Nzg5IEM0Ni44Njk1ODM4LDI3LjA4NTg2NyA0Ni41NjI5ODcyLDI2LjgzNjIyODMgNDYuNDM3MzMyOSwyNi40OTE3MjY4IEM0NS42MTQwNDU2LDI0LjIyNjAwNTcgNDQuNDI3ODY4NiwyMi4zMjA3NjI4IDQyLjkxMTk3NDUsMjAuODMwOTE4OCBDMzkuMDMyNzczNSwxNy4wMTU0NDA0IDMzLjcyODE0OTYsMTUuOTgwOTM3NCAyOC43MTcwNTQzLDE4LjA2NDkyMTYgQzI0LjU0NjMzNTIsMTkuNzkyNDIxNyAyMS4yODAzMjc0LDI0Ljc2NzIyMjQgMjEuMjgwMzI3NCwyOS4zOTI1MjkiIGlkPSJBbWF6b24tQ2xvdWRXYXRjaF9JY29uXzY0X1NxdWlkIiBmaWxsPSIjRkZGRkZGIj48L3BhdGg+CiAgICA8L2c+Cjwvc3ZnPg==',
+  sns: 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB3aWR0aD0iODBweCIgaGVpZ2h0PSI4MHB4IiB2aWV3Qm94PSIwIDAgODAgODAiIHZlcnNpb249IjEuMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayI+CiAgICA8IS0tIEdlbmVyYXRvcjogU2tldGNoIDY0ICg5MzUzNykgLSBodHRwczovL3NrZXRjaC5jb20gLS0+CiAgICA8dGl0bGU+SWNvbi1BcmNoaXRlY3R1cmUvNjQvQXJjaF9BV1MtU2ltcGxlLU5vdGlmaWNhdGlvbi1TZXJ2aWNlXzY0PC90aXRsZT4KICAgIDxkZXNjPkNyZWF0ZWQgd2l0aCBTa2V0Y2guPC9kZXNjPgogICAgPGRlZnM+CiAgICAgICAgPGxpbmVhckdyYWRpZW50IHgxPSIwJSIgeTE9IjEwMCUiIHgyPSIxMDAlIiB5Mj0iMCUiIGlkPSJsaW5lYXJHcmFkaWVudC0xIj4KICAgICAgICAgICAgPHN0b3Agc3RvcC1jb2xvcj0iI0IwMDg0RCIgb2Zmc2V0PSIwJSI+PC9zdG9wPgogICAgICAgICAgICA8c3RvcCBzdG9wLWNvbG9yPSIjRkY0RjhCIiBvZmZzZXQ9IjEwMCUiPjwvc3RvcD4KICAgICAgICA8L2xpbmVhckdyYWRpZW50PgogICAgPC9kZWZzPgogICAgPGcgaWQ9Ikljb24tQXJjaGl0ZWN0dXJlLzY0L0FyY2hfQVdTLVNpbXBsZS1Ob3RpZmljYXRpb24tU2VydmljZV82NCIgc3Ryb2tlPSJub25lIiBzdHJva2Utd2lkdGg9IjEiIGZpbGw9Im5vbmUiIGZpbGwtcnVsZT0iZXZlbm9kZCI+CiAgICAgICAgPGcgaWQ9Ikljb24tQXJjaGl0ZWN0dXJlLUJHLzY0L0FwcGxpY2F0aW9uLUludGVncmF0aW9uIiBmaWxsPSJ1cmwoI2xpbmVhckdyYWRpZW50LTEpIj4KICAgICAgICAgICAgPHJlY3QgaWQ9IlJlY3RhbmdsZSIgeD0iMCIgeT0iMCIgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIj48L3JlY3Q+CiAgICAgICAgPC9nPgogICAgICAgIDxwYXRoIGQ9Ik0xNywzOCBDMTguMTAzLDM4IDE5LDM4Ljg5NyAxOSw0MCBDMTksNDEuMTAzIDE4LjEwMyw0MiAxNyw0MiBDMTUuODk3LDQyIDE1LDQxLjEwMyAxNSw0MCBDMTUsMzguODk3IDE1Ljg5NywzOCAxNywzOCBMMTcsMzggWiBNNDEsNjQgQzI5LjMxNCw2NCAxOS4yODksNTUuNDY2IDE3LjE5NCw0My45OCBDMTguOTY1LDQzLjg5NCAyMC40MjcsNDIuNjU5IDIwLjg1Nyw0MSBMMjcsNDEgTDI3LDM5IEwyMC44NTcsMzkgQzIwLjQyNywzNy4zNDIgMTguOTY2LDM2LjEwNyAxNy4xOTUsMzYuMDIgQzE5LjI4NSwyNC43MSAyOS41MTEsMTYgNDEsMTYgQzQ1LjMxMywxNiA0OS44MzIsMTcuNjIyIDU0LjQyOSwyMC44MjEgTDU1LjU3MSwxOS4xNzkgQzUwLjYzMywxNS43NDMgNDUuNzMsMTQgNDEsMTQgQzI4LjI3LDE0IDE2Ljk0OSwyMy44NjUgMTUuMDYzLDM2LjUyMSBDMTMuODM5LDM3LjIwNyAxMywzOC41IDEzLDQwIEMxMyw0MS41IDEzLjgzOSw0Mi43OTMgMTUuMDYzLDQzLjQ3OCBDMTYuOTcsNTYuMzQxIDI4LjA1Niw2NiA0MSw2NiBDNDYuNDA3LDY2IDUxLjk0Miw2NC4xNTcgNTYuNTg1LDYwLjgxMSBMNTUuNDE1LDU5LjE4OSBDNTEuMTEsNjIuMjkyIDQ1Ljk5MSw2NCA0MSw2NCBMNDEsNjQgWiBNMzAuMTAxLDM2LjQ0MiBDMzEuOTU1LDM2Ljg5NSAzNC4yNzUsMzcgMzYsMzcgQzM3LjY0MiwzNyAzOS44MjMsMzYuOTA1IDQxLjYyOSwzNi41MDYgTDM3LjEwNSw0NS41NTMgQzM3LjAzNiw0NS42OTEgMzcsNDUuODQ1IDM3LDQ2IEwzNyw1MC40NTMgQzM2LjE5OSw1MC45NjQgMzQuODMzLDUxLjgxMiAzNCw1MS45ODYgTDM0LDQ2IEMzNCw0NS44NjggMzMuOTc0LDQ1LjczNyAzMy45MjMsNDUuNjE1IEwzMC4xMDEsMzYuNDQyIFogTTM2LDMzIEM0MC4wMjUsMzMgNDIuMTc0LDMzLjYwNCA0Mi44NDEsMzQgQzQyLjE3NCwzNC4zOTYgNDAuMDI1LDM1IDM2LDM1IEMzMS45NzUsMzUgMjkuODI2LDM0LjM5NiAyOS4xNTksMzQgQzI5LjgyNiwzMy42MDQgMzEuOTc1LDMzIDM2LDMzIEwzNiwzMyBaIE0zMyw1NCBMMzQsNTQgQzM0LjA0Myw1NCAzNC4wODYsNTMuOTk3IDM0LjEyOCw1My45OTIgQzM1LjM1Miw1My44MzMgMzYuOTA5LDUyLjg4NyAzOC4yNzIsNTIuMDEzIEwzOC41MzUsNTEuODQ1IEMzOC44MjQsNTEuNjYxIDM5LDUxLjM0MiAzOSw1MSBMMzksNDYuMjM2IEw0NC41NTksMzUuMTIgQzQ0LjgzMywzNC44MDEgNDUsMzQuNDM0IDQ1LDM0IEM0NSwzMS4zOSAzOS4zNjEsMzEgMzYsMzEgQzMyLjYzOSwzMSAyNywzMS4zOSAyNywzNCBDMjcsMzQuMzY2IDI3LjEyLDM0LjY4NCAyNy4zMiwzNC45NjcgTDMyLDQ2LjIgTDMyLDUzIEMzMiw1My41NTIgMzIuNDQ3LDU0IDMzLDU0IEwzMyw1NCBaIE02Miw1MyBDNjMuMTAzLDUzIDY0LDUzLjg5NyA2NCw1NSBDNjQsNTYuMTAzIDYzLjEwMyw1NyA2Miw1NyBDNjAuODk3LDU3IDYwLDU2LjEwMyA2MCw1NSBDNjAsNTMuODk3IDYwLjg5Nyw1MyA2Miw1MyBMNjIsNTMgWiBNNjIsMjMgQzYzLjEwMywyMyA2NCwyMy44OTcgNjQsMjUgQzY0LDI2LjEwMyA2My4xMDMsMjcgNjIsMjcgQzYwLjg5NywyNyA2MCwyNi4xMDMgNjAsMjUgQzYwLDIzLjg5NyA2MC44OTcsMjMgNjIsMjMgTDYyLDIzIFogTTY0LDM4IEM2NS4xMDMsMzggNjYsMzguODk3IDY2LDQwIEM2Niw0MS4xMDMgNjUuMTAzLDQyIDY0LDQyIEM2Mi44OTcsNDIgNjIsNDEuMTAzIDYyLDQwIEM2MiwzOC44OTcgNjIuODk3LDM4IDY0LDM4IEw2NCwzOCBaIE01NCw0MSBMNjAuMTQzLDQxIEM2MC41ODksNDIuNzIgNjIuMTQyLDQ0IDY0LDQ0IEM2Ni4yMDYsNDQgNjgsNDIuMjA2IDY4LDQwIEM2OCwzNy43OTQgNjYuMjA2LDM2IDY0LDM2IEM2Mi4xNDIsMzYgNjAuNTg5LDM3LjI4IDYwLjE0MywzOSBMNTQsMzkgTDU0LDI2IEw1OC4xNDMsMjYgQzU4LjU4OSwyNy43MiA2MC4xNDIsMjkgNjIsMjkgQzY0LjIwNiwyOSA2NiwyNy4yMDYgNjYsMjUgQzY2LDIyLjc5NCA2NC4yMDYsMjEgNjIsMjEgQzYwLjE0MiwyMSA1OC41ODksMjIuMjggNTguMTQzLDI0IEw1MywyNCBDNTIuNDQ3LDI0IDUyLDI0LjQ0OCA1MiwyNSBMNTIsMzkgTDQ1LDM5IEw0NSw0MSBMNTIsNDEgTDUyLDU1IEM1Miw1NS41NTIgNTIuNDQ3LDU2IDUzLDU2IEw1OC4xNDMsNTYgQzU4LjU4OSw1Ny43MiA2MC4xNDIsNTkgNjIsNTkgQzY0LjIwNiw1OSA2Niw1Ny4yMDYgNjYsNTUgQzY2LDUyLjc5NCA2NC4yMDYsNTEgNjIsNTEgQzYwLjE0Miw1MSA1OC41ODksNTIuMjggNTguMTQzLDU0IEw1NCw1NCBMNTQsNDEgWiIgaWQ9IkFXUy1TaW1wbGUtTm90aWZpY2F0aW9uLVNlcnZpY2VfSWNvbl82NF9TcXVpZCIgZmlsbD0iI0ZGRkZGRiI+PC9wYXRoPgogICAgPC9nPgo8L3N2Zz4=',
+  ses: 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB3aWR0aD0iODBweCIgaGVpZ2h0PSI4MHB4IiB2aWV3Qm94PSIwIDAgODAgODAiIHZlcnNpb249IjEuMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayI+CiAgICA8dGl0bGU+SWNvbi1BcmNoaXRlY3R1cmUvNjQvQXJjaF9BbWF6b24tU2ltcGxlLUVtYWlsLVNlcnZpY2VfNjQ8L3RpdGxlPgogICAgPGRlZnM+CiAgICAgICAgPGxpbmVhckdyYWRpZW50IHgxPSIwJSIgeTE9IjEwMCUiIHgyPSIxMDAlIiB5Mj0iMCUiIGlkPSJsaW5lYXJHcmFkaWVudC0xIj4KICAgICAgICAgICAgPHN0b3Agc3RvcC1jb2xvcj0iI0JEMDgxNiIgb2Zmc2V0PSIwJSI+PC9zdG9wPgogICAgICAgICAgICA8c3RvcCBzdG9wLWNvbG9yPSIjRkY1MjUyIiBvZmZzZXQ9IjEwMCUiPjwvc3RvcD4KICAgICAgICA8L2xpbmVhckdyYWRpZW50PgogICAgPC9kZWZzPgogICAgPGcgaWQ9Ikljb24tQXJjaGl0ZWN0dXJlLzY0L0FyY2hfQW1hem9uLVNpbXBsZS1FbWFpbC1TZXJ2aWNlXzY0IiBzdHJva2U9Im5vbmUiIHN0cm9rZS13aWR0aD0iMSIgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIj4KICAgICAgICA8ZyBpZD0iUmVjdGFuZ2xlIiBmaWxsPSJ1cmwoI2xpbmVhckdyYWRpZW50LTEpIj4KICAgICAgICAgICAgPHJlY3QgeD0iMCIgeT0iMCIgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIj48L3JlY3Q+CiAgICAgICAgPC9nPgogICAgICAgIDxwYXRoIGQ9Ik01Nyw2MC45OTk4NzUgQzU3LDU5LjM3Mzg0NiA1NS42MjYsNTcuOTk5ODIxNCA1NCw1Ny45OTk4MjE0IEM1Mi4zNzQsNTcuOTk5ODIxNCA1MSw1OS4zNzM4NDYgNTEsNjAuOTk5ODc1IEM1MSw2Mi42MjU5MDQgNTIuMzc0LDYzLjk5OTkyODYgNTQsNjMuOTk5OTI4NiBDNTUuNjI2LDYzLjk5OTkyODYgNTcsNjIuNjI1OTA0IDU3LDYwLjk5OTg3NSBMNTcsNjAuOTk5ODc1IFogTTQwLDU5Ljk5OTg1NzEgQzM4LjM3NCw1OS45OTk4NTcxIDM3LDYxLjM3Mzg4MTcgMzcsNjIuOTk5OTEwNyBDMzcsNjQuNjI1OTM5NyAzOC4zNzQsNjUuOTk5OTY0MyA0MCw2NS45OTk5NjQzIEM0MS42MjYsNjUuOTk5OTY0MyA0Myw2NC42MjU5Mzk3IDQzLDYyLjk5OTkxMDcgQzQzLDYxLjM3Mzg4MTcgNDEuNjI2LDU5Ljk5OTg1NzEgNDAsNTkuOTk5ODU3MSBMNDAsNTkuOTk5ODU3MSBaIE0yNiw1Ny45OTk4MjE0IEMyNC4zNzQsNTcuOTk5ODIxNCAyMyw1OS4zNzM4NDYgMjMsNjAuOTk5ODc1IEMyMyw2Mi42MjU5MDQgMjQuMzc0LDYzLjk5OTkyODYgMjYsNjMuOTk5OTI4NiBDMjcuNjI2LDYzLjk5OTkyODYgMjksNjIuNjI1OTA0IDI5LDYwLjk5OTg3NSBDMjksNTkuMzczODQ2IDI3LjYyNiw1Ny45OTk4MjE0IDI2LDU3Ljk5OTgyMTQgTDI2LDU3Ljk5OTgyMTQgWiBNMjguNjA1LDQyLjk5OTU1MzYgTDUxLjM5NSw0Mi45OTk1NTM2IEw0My43MzksMzYuMTEwNDMwNSBMNDAuNjQ5LDM4Ljc1ODQ3NzggQzQwLjQ2MywzOC45MTk0ODA3IDQwLjIzLDM4Ljk5OTQ4MjEgMzkuOTk5LDM4Ljk5OTQ4MjEgQzM5Ljc2OCwzOC45OTk0ODIxIDM5LjUzNSwzOC45MTk0ODA3IDM5LjM0OSwzOC43NTg0Nzc4IEwzNi4yNiwzNi4xMTA0MzA1IEwyOC42MDUsNDIuOTk5NTUzNiBaIE0yNywyOC4xNzMyODg4IEwyNyw0MS43NTQ1MzEzIEwzNC43MjksMzQuNzk4NDA3MSBMMjcsMjguMTczMjg4OCBaIE01MS4yOTcsMjYuOTk5MjY3OCBMMjguNzAzLDI2Ljk5OTI2NzggTDM5Ljk5OSwzNi42ODI0NDA4IEw1MS4yOTcsMjYuOTk5MjY3OCBaIE01Myw0MS43NTQ1MzEzIEw1MywyOC4xNzMyODg4IEw0NS4yNzEsMzQuNzk3NDA3MSBMNTMsNDEuNzU0NTMxMyBaIE01OSw2MC45OTk4NzUgQzU5LDYzLjcwOTkyMzQgNTYuNzEsNjUuOTk5OTY0MyA1NCw2NS45OTk5NjQzIEM1MS4yOSw2NS45OTk5NjQzIDQ5LDYzLjcwOTkyMzQgNDksNjAuOTk5ODc1IEM0OSw1OC42MzA4MzI3IDUwLjc1LDU2LjU4Mzc5NjEgNTMsNTYuMTA1Nzg3NiBMNTMsNTIuOTk5NzMyMSBMNDEsNTIuOTk5NzMyMSBMNDEsNTguMTA1ODIzMyBDNDMuMjUsNTguNTgzODMxOSA0NSw2MC42MzA4Njg0IDQ1LDYyLjk5OTkxMDcgQzQ1LDY1LjcwOTk1OTEgNDIuNzEsNjggNDAsNjggQzM3LjI5LDY4IDM1LDY1LjcwOTk1OTEgMzUsNjIuOTk5OTEwNyBDMzUsNjAuNjMwODY4NCAzNi43NSw1OC41ODM4MzE5IDM5LDU4LjEwNTgyMzMgTDM5LDUyLjk5OTczMjEgTDI3LDUyLjk5OTczMjEgTDI3LDU2LjEwNTc4NzYgQzI5LjI1LDU2LjU4Mzc5NjEgMzEsNTguNjMwODMyNyAzMSw2MC45OTk4NzUgQzMxLDYzLjcwOTkyMzQgMjguNzEsNjUuOTk5OTY0MyAyNiw2NS45OTk5NjQzIEMyMy4yOSw2NS45OTk5NjQzIDIxLDYzLjcwOTkyMzQgMjEsNjAuOTk5ODc1IEMyMSw1OC42MzA4MzI3IDIyLjc1LDU2LjU4Mzc5NjEgMjUsNTYuMTA1Nzg3NiBMMjUsNTEuOTk5NzE0MyBDMjUsNTEuNDQ3NzA0NCAyNS40NDcsNTAuOTk5Njk2NCAyNiw1MC45OTk2OTY0IEwzOSw1MC45OTk2OTY0IEwzOSw0NC45OTk1ODkzIEwyNiw0NC45OTk1ODkzIEMyNS40NDcsNDQuOTk5NTg5MyAyNSw0NC41NTE1ODEzIDI1LDQzLjk5OTU3MTQgTDI1LDI1Ljk5OTI1IEMyNSwyNS40NDcyNDAxIDI1LjQ0NywyNC45OTkyMzIxIDI2LDI0Ljk5OTIzMjEgTDU0LDI0Ljk5OTIzMjEgQzU0LjU1MywyNC45OTkyMzIxIDU1LDI1LjQ0NzI0MDEgNTUsMjUuOTk5MjUgTDU1LDQzLjk5OTU3MTQgQzU1LDQ0LjU1MTU4MTMgNTQuNTUzLDQ0Ljk5OTU4OTMgNTQsNDQuOTk5NTg5MyBMNDEsNDQuOTk5NTg5MyBMNDEsNTAuOTk5Njk2NCBMNTQsNTAuOTk5Njk2NCBDNTQuNTUzLDUwLjk5OTY5NjQgNTUsNTEuNDQ3NzA0NCA1NSw1MS45OTk3MTQzIEw1NSw1Ni4xMDU3ODc2IEM1Ny4yNSw1Ni41ODM3OTYxIDU5LDU4LjYzMDgzMjcgNTksNjAuOTk5ODc1IEw1OSw2MC45OTk4NzUgWiBNNjgsMzkuOTk5NSBDNjgsNDUuOTA2NjA1NSA2Ni4xNzcsNTEuNTU5NzA2NCA2Mi43MjcsNTYuMzQ0NzkxOSBMNjEuMTA0LDU1LjE3NDc3MSBDNjQuMzA3LDUwLjczMTY5MTYgNjYsNDUuNDg0NTk3OSA2NiwzOS45OTk1IEM2NiwyNS42NjQyNDQgNTQuMzM3LDE0LjAwMDAzNTcgNDAuMDAxLDE0LjAwMDAzNTcgQzI1LjY2NCwxNC4wMDAwMzU3IDE0LDI1LjY2NDI0NCAxNCwzOS45OTk1IEMxNCw0NS40ODQ1OTc5IDE1LjY5Myw1MC43MzE2OTE2IDE4Ljg5Niw1NS4xNzQ3NzEgTDE3LjI3Myw1Ni4zNDQ3OTE5IEMxMy44MjMsNTEuNTU5NzA2NCAxMiw0NS45MDY2MDU1IDEyLDM5Ljk5OTUgQzEyLDI0LjU2MTIyNDMgMjQuNTYxLDEyIDM5Ljk5OSwxMiBDNTUuNDM4LDEyIDY4LDI0LjU2MTIyNDMgNjgsMzkuOTk5NSBMNjgsMzkuOTk5NSBaIiBpZD0iQW1hem9uLVNpbXBsZS1FbWFpbC1TZXJ2aWNlX0ljb25fNjRfU3F1aWQiIGZpbGw9IiNGRkZGRkYiPjwvcGF0aD4KICAgIDwvZz4KPC9zdmc+',
+};
+</script>
+
+<script>
+/* fill any <img data-ico="key"> with the inlined AWS icon */
+window.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('img[data-ico]').forEach(im => {
+    const k = im.getAttribute('data-ico');
+    if (AWS[k]) im.src = AWS[k];
+  });
+});
+</script>
+
+
+<div class="corner-logo">E-Commerce Platform · <b>AWS HLD</b></div>
+<div class="pbar" id="pbar"></div>
+
+<div class="deck" id="deck">
+
+<!-- ══════════ 01 · TITLE ══════════ -->
+<div class="slide active">
+  <div style="position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0;">
+    <div style="position:absolute;top:-120px;right:-80px;width:700px;height:700px;border-radius:50%;background:radial-gradient(circle,rgba(59,130,246,.18) 0%,transparent 70%);"></div>
+    <div style="position:absolute;bottom:-100px;left:-60px;width:500px;height:500px;border-radius:50%;background:radial-gradient(circle,rgba(74,222,128,.10) 0%,transparent 70%);"></div>
+    <div style="position:absolute;top:50%;left:5%;right:5%;height:1px;background:linear-gradient(90deg,transparent,rgba(96,180,255,.10),rgba(74,222,128,.10),transparent);"></div>
+  </div>
+  <div style="text-align:center;position:relative;z-index:1;">
+    <div style="display:inline-flex;align-items:center;gap:10px;background:var(--surf);border:1px solid var(--border);border-radius:40px;padding:8px 20px;margin-bottom:26px;font-size:12px;color:var(--muted);">
+      <span style="width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block;"></span>
+      High Level Solution Design · Genesis HLD Template
+    </div>
+    <h1 style="font-size:clamp(2.6rem,5vw,4.6rem);">Cloud-Native<br><span class="accent">E-Commerce Platform</span></h1>
+    <p style="font-size:1.12rem;color:var(--muted);margin-top:18px;max-width:660px;line-height:1.65;">
+      A production-ready reference architecture on <strong style="color:var(--blue);">AWS</strong> —
+      highly available, horizontally scalable, DR-ready, and secure, while
+      <strong style="color:var(--green);">minimizing vendor lock-in</strong> through open standards.
+    </p>
+    <div style="margin-top:24px;display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">
+      <span class="tag tb">Kubernetes / EKS</span><span class="tag tp">PostgreSQL / Aurora</span>
+      <span class="tag tg">Kafka / MSK</span><span class="tag to">OIDC</span><span class="tag ty">OpenTelemetry</span>
+    </div>
+    <div style="margin-top:26px;color:var(--dim);font-size:12px;">
+      <span class="kbd">→</span> / <span class="kbd">Space</span> advance &ensp; <span class="kbd">←</span> back &ensp; <span class="kbd">F</span> fullscreen
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ 02 · OVERVIEW (§1) ══════════ -->
+<div class="slide">
+  <div class="eyebrow">§1 · Overview</div>
+  <h2>A platform built from five mandatory capabilities</h2>
+  <p style="font-size:14px;color:var(--muted);max-width:820px;margin-bottom:24px;line-height:1.6;">
+    A production-ready, cloud-native e-commerce platform for a high-traffic storefront, with strong guarantees around
+    <strong class="blue">availability</strong>, <strong class="green">scalability</strong>,
+    <strong class="purple">disaster recovery</strong>, and <strong class="orange">security</strong> — deliberately portable.
+  </p>
+  <div class="cols-3 anim" style="max-width:960px;">
+    <div class="card" style="border-top:3px solid var(--blue);"><div style="font-size:26px;">🛍️</div><div style="font-weight:700;color:var(--blue);margin:6px 0 4px;">Web Front End</div><div style="font-size:12px;color:var(--muted);line-height:1.5;">Storefront: browse, search, cart, checkout</div></div>
+    <div class="card" style="border-top:3px solid var(--green);"><div style="font-size:26px;">🔌</div><div style="font-weight:700;color:var(--green);margin:6px 0 4px;">RESTful API</div><div style="font-size:12px;color:var(--muted);line-height:1.5;">Business logic: catalog, cart, orders, payments</div></div>
+    <div class="card" style="border-top:3px solid var(--purple);"><div style="font-size:26px;">🗄️</div><div style="font-weight:700;color:var(--purple);margin:6px 0 4px;">Database</div><div style="font-size:12px;color:var(--muted);line-height:1.5;">Transactional source of truth + cache + search</div></div>
+    <div class="card" style="border-top:3px solid var(--orange);"><div style="font-size:26px;">🔐</div><div style="font-weight:700;color:var(--orange);margin:6px 0 4px;">Authentication</div><div style="font-size:12px;color:var(--muted);line-height:1.5;">Customer identity, login, token issuance (OIDC)</div></div>
+    <div class="card" style="border-top:3px solid var(--yellow);"><div style="font-size:26px;">⚡</div><div style="font-weight:700;color:var(--yellow);margin:6px 0 4px;">Real-time Processing</div><div style="font-size:12px;color:var(--muted);line-height:1.5;">Event-driven inventory, fraud scoring, analytics</div></div>
+    <div class="card" style="border-top:3px solid var(--green);background:rgba(74,222,128,.05);"><div style="font-size:26px;">🎯</div><div style="font-weight:700;color:var(--green);margin:6px 0 4px;">Design Goal</div><div style="font-size:12px;color:var(--muted);line-height:1.5;">HA · scale · DR · security · <strong>no lock-in</strong></div></div>
+  </div>
+</div>
+
+<!-- ══════════ 03 · PROBLEM (§1.2) ══════════ -->
+<div class="slide">
+  <div class="eyebrow">§1.2 · Problem Statement</div>
+  <h2>Why the naïve approach fails</h2>
+  <div style="display:flex;flex-direction:column;gap:12px;width:100%;max-width:820px;" class="anim">
+    <div class="card" style="border-left:4px solid var(--orange);display:flex;align-items:center;gap:16px;"><span style="font-size:24px;">📈</span><span style="font-size:14px;"><strong>Highly variable traffic</strong> — flash sales & Black Friday drive <strong class="orange">10–50×</strong> baseline in minutes. Static provisioning wastes money or falls over.</span></div>
+    <div class="card" style="border-left:4px solid var(--red);display:flex;align-items:center;gap:16px;"><span style="font-size:24px;">💸</span><span style="font-size:14px;"><strong>Downtime = lost revenue.</strong> A checkout outage at peak is business-critical — single AZ / region / DB are unacceptable SPOFs.</span></div>
+    <div class="card" style="border-left:4px solid var(--red);display:flex;align-items:center;gap:16px;"><span style="font-size:24px;">🕸️</span><span style="font-size:14px;"><strong>Monolithic coupling</strong> — a failure in reviews/recommendations can take down the checkout critical path.</span></div>
+    <div class="card" style="border-left:4px solid var(--orange);display:flex;align-items:center;gap:16px;"><span style="font-size:24px;">🔒</span><span style="font-size:14px;"><strong>Vendor lock-in</strong> to proprietary services raises long-term cost, migration risk, and weakens negotiating position.</span></div>
+    <div class="card" style="border-left:4px solid var(--purple);display:flex;align-items:center;gap:16px;"><span style="font-size:24px;">🛡️</span><span style="font-size:14px;"><strong>Security & compliance</strong> — PII and payment flows demand defense-in-depth, encryption everywhere, least-privilege by default.</span></div>
+  </div>
+</div>
+
+<!-- ══════════ 04 · SOLUTION (§1.3) ══════════ -->
+<div class="slide">
+  <div class="eyebrow">§1.3 · Solution Statement</div>
+  <h2>Containerized microservices, open-standard core</h2>
+  <div class="cols-4 anim" style="max-width:1040px;">
+    <div class="card" style="border-top:3px solid var(--blue);"><span style="font-size:26px;">☸️</span><div style="font-size:13px;font-weight:700;color:var(--blue);margin-top:6px;">EKS Microservices</div><div style="font-size:11.5px;color:var(--muted);line-height:1.5;margin-top:4px;">Fronted by CloudFront CDN + API Gateway</div></div>
+    <div class="card" style="border-top:3px solid var(--purple);"><span style="font-size:26px;">🗄️</span><div style="font-size:13px;font-weight:700;color:var(--purple);margin-top:6px;">Multi-AZ Data</div><div style="font-size:11.5px;color:var(--muted);line-height:1.5;margin-top:4px;">Aurora PostgreSQL · Redis · OpenSearch</div></div>
+    <div class="card" style="border-top:3px solid var(--green);"><span style="font-size:26px;">📨</span><div style="font-size:13px;font-weight:700;color:var(--green);margin-top:6px;">Event Backbone</div><div style="font-size:11.5px;color:var(--muted);line-height:1.5;margin-top:4px;">Kafka / MSK powers real-time processing</div></div>
+    <div class="card" style="border-top:3px solid var(--orange);"><span style="font-size:26px;">🔐</span><div style="font-size:13px;font-weight:700;color:var(--orange);margin-top:6px;">Identity via OIDC</div><div style="font-size:11.5px;color:var(--muted);line-height:1.5;margin-top:4px;">Cognito over open OIDC — swappable</div></div>
+    <div class="card" style="border-top:3px solid var(--green);"><span style="font-size:26px;">🌐</span><div style="font-size:13px;font-weight:700;color:var(--green);margin-top:6px;">Multi-AZ HA</div><div style="font-size:11.5px;color:var(--muted);line-height:1.5;margin-top:4px;">Warm-standby multi-region DR</div></div>
+    <div class="card" style="border-top:3px solid var(--blue);"><span style="font-size:26px;">⚙️</span><div style="font-size:13px;font-weight:700;color:var(--blue);margin-top:6px;">3-Layer Autoscale</div><div style="font-size:11.5px;color:var(--muted);line-height:1.5;margin-top:4px;">Pods (HPA) · nodes (Karpenter) · KEDA</div></div>
+    <div class="card" style="border-top:3px solid var(--yellow);"><span style="font-size:26px;">🔭</span><div style="font-size:13px;font-weight:700;color:var(--yellow);margin-top:6px;">Observable</div><div style="font-size:11.5px;color:var(--muted);line-height:1.5;margin-top:4px;">OpenTelemetry end-to-end</div></div>
+    <div class="card" style="border-top:3px solid var(--purple);"><span style="font-size:26px;">🔓</span><div style="font-size:13px;font-weight:700;color:var(--purple);margin-top:6px;">Portable</div><div style="font-size:11.5px;color:var(--muted);line-height:1.5;margin-top:4px;">K8s · PostgreSQL · Redis · Kafka · S3 API</div></div>
+  </div>
+  <div class="note anim" style="max-width:1040px;margin-top:18px;"><span>💡</span><span>Every core component is anchored on an <strong>open standard</strong>, so the platform can be re-hosted on GCP/Azure with bounded effort.</span></div>
+</div>
+
+<!-- ══════════ 05 · TERMS (§1.1) ══════════ -->
+<div class="slide scroll">
+  <div class="eyebrow">§1.1 · Terms &amp; Definitions</div>
+  <h2>Glossary</h2>
+  <div style="width:100%;max-width:940px;">
+    <table class="dt">
+      <thead><tr><th>Term</th><th>Acronym</th><th>Definition</th></tr></thead>
+      <tbody>
+        <tr><td>Availability Zone</td><td><code>AZ</code></td><td>Isolated datacenter within a region — we span 3</td></tr>
+        <tr><td>High Availability</td><td><code>HA</code></td><td>Stays operational despite component failure (multi-AZ)</td></tr>
+        <tr><td>Disaster Recovery</td><td><code>DR</code></td><td>Recovery after region-level failure (warm standby)</td></tr>
+        <tr><td>Recovery Point Objective</td><td><code>RPO</code></td><td>Max acceptable data loss — target &lt; 1 min</td></tr>
+        <tr><td>Recovery Time Objective</td><td><code>RTO</code></td><td>Max acceptable downtime — target &lt; 15 min</td></tr>
+        <tr><td>Horizontal Pod Autoscaler</td><td><code>HPA</code></td><td>Scales pod replicas on CPU/mem/custom metrics</td></tr>
+        <tr><td>Cluster Autoscaler</td><td><code>Karpenter</code></td><td>Scales number/size of worker nodes</td></tr>
+        <tr><td>Event-Driven Autoscaler</td><td><code>KEDA</code></td><td>Scales workloads on Kafka consumer lag</td></tr>
+        <tr><td>Content Delivery Network</td><td><code>CDN</code></td><td>Edge cache for low-latency delivery (CloudFront)</td></tr>
+        <tr><td>Web Application Firewall</td><td><code>WAF</code></td><td>Filters malicious HTTP at the edge</td></tr>
+        <tr><td>OpenID Connect</td><td><code>OIDC</code></td><td>Identity layer on OAuth 2.0 — auth standard we speak</td></tr>
+        <tr><td>JSON Web Token</td><td><code>JWT</code></td><td>Signed token carrying identity/claims</td></tr>
+        <tr><td>Managed Streaming for Kafka</td><td><code>MSK</code></td><td>AWS-managed Apache Kafka — event backbone</td></tr>
+        <tr><td>Service Level Objective</td><td><code>SLO</code></td><td>Target reliability (e.g. 99.9%) — drives alerting</td></tr>
+        <tr><td>Infrastructure as Code</td><td><code>IaC</code></td><td>Infra defined declaratively — Terraform</td></tr>
+        <tr><td>Identity for Service Accounts</td><td><code>IRSA</code></td><td>Per-pod IAM roles on EKS — least privilege</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════ 06 · REQUIREMENTS (§2) ══════════ -->
+<div class="slide">
+  <div class="eyebrow">§2 · Requirement Summary</div>
+  <h2>Functional &amp; non-functional targets</h2>
+  <div class="cols-2 anim" style="max-width:1000px;align-items:start;">
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div class="card">
+        <div class="subhead">Functional</div>
+        <ul class="flist">
+          <li data-i="🛍️">Storefront: browse, faceted search, product detail, cart, checkout, order history</li>
+          <li data-i="🔌">Versioned RESTful API for web/mobile clients &amp; partners</li>
+          <li data-i="🔐">Authenticate customers (email/password, social, MFA); issue standard tokens</li>
+          <li data-i="💳">Process orders transactionally; external tokenizing payment provider</li>
+          <li data-i="⚡">Near-real-time events: inventory, fraud scoring, personalization, analytics</li>
+        </ul>
+      </div>
+      <div class="info"><span>👥</span><span><strong>Users / load:</strong> anonymous browse + authenticated checkout, mobile, partner APIs. Read-heavy with sharp write bursts — CDN absorbs reads, Kafka absorbs write bursts.</span></div>
+    </div>
+    <div class="card">
+      <div class="subhead">Non-functional targets</div>
+      <table class="dt">
+        <thead><tr><th>Attribute</th><th>Target</th></tr></thead>
+        <tbody>
+          <tr><td>Availability (checkout)</td><td>≥ 99.95% · SLO 99.9%</td></tr>
+          <tr><td>Latency</td><td>p95 API &lt; 300ms · p99 checkout &lt; 800ms</td></tr>
+          <tr><td>Scalability</td><td>10–50× baseline in minutes</td></tr>
+          <tr><td>RPO / RTO</td><td>&lt; 1 min / &lt; 15 min</td></tr>
+          <tr><td>Security</td><td>Encrypt in-transit + at-rest · least-priv IAM · WAF/DDoS · PCI minimized</td></tr>
+          <tr><td>Portability</td><td>No proprietary interface in core</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ 07 · ASSUMPTIONS (§3) ══════════ -->
+<div class="slide">
+  <div class="eyebrow">§3 · Assumptions &amp; Prerequisites</div>
+  <h2>What we assume going in</h2>
+  <div style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:860px;" class="anim">
+    <div class="card" style="display:flex;gap:14px;align-items:center;"><span style="font-size:22px;">🏢</span><span style="font-size:13.5px;">Multi-account cloud org (prod, staging, dev, security/log-archive) exists or will be provisioned</span></div>
+    <div class="card" style="display:flex;gap:14px;align-items:center;"><span style="font-size:22px;">💳</span><span style="font-size:13.5px;">Card data handled by external <strong>PCI-DSS tokenizing provider</strong> (Stripe/Adyen) — we never store raw PAN</span></div>
+    <div class="card" style="display:flex;gap:14px;align-items:center;"><span style="font-size:22px;">⚛️</span><span style="font-size:13.5px;">Front end is a <strong>static SPA/SSR bundle</strong> (React/Next.js) → object storage + CDN</span></div>
+    <div class="card" style="display:flex;gap:14px;align-items:center;"><span style="font-size:22px;">🏗️</span><span style="font-size:13.5px;">All infra via <strong>Terraform</strong>; deploys via <strong>GitOps (ArgoCD/Flux)</strong> — no click-ops in prod</span></div>
+    <div class="card" style="display:flex;gap:14px;align-items:center;"><span style="font-size:22px;">🧑‍🔧</span><span style="font-size:13.5px;">Teams own services end-to-end (you build it, you run it); each service has a runbook</span></div>
+    <div class="info"><span>🎯</span><span><strong>M1 (this design):</strong> single primary region, multi-AZ HA, warm-standby DR, core five capabilities. <strong>M2 (future):</strong> multi-region active-active, service mesh, progressive delivery.</span></div>
+    <div class="warn"><span>⚠️</span><span><strong>Tech-debt note:</strong> until the service mesh (M2) lands, inter-service mTLS relies on TLS at the ALB/ingress + network policies rather than automatic sidecar mTLS.</span></div>
+  </div>
+</div>
+
+<!-- ══════════ 08 · SECTION DIVIDER 4 ══════════ -->
+<div class="slide divider">
+  <div class="sec-num">4</div>
+  <div style="position:relative;z-index:5;text-align:center;">
+    <div class="eyebrow">Section 4</div>
+    <h1 style="font-size:clamp(2rem,4.5vw,3.8rem);">High-Level <span class="blue">Design</span></h1>
+    <p style="color:var(--muted);max-width:560px;margin:14px auto 0;font-size:1rem;line-height:1.6;">
+      C4 architecture levels, application modules, transaction flows, and the risks that shape them.
+    </p>
+    <div style="margin-top:22px;display:flex;gap:9px;flex-wrap:wrap;justify-content:center;">
+      <span class="tag tb">Context</span><span class="tag tp">Containers</span><span class="tag tg">Deployment</span>
+      <span class="tag to">Domain</span><span class="tag ty">Flows</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ 09 · C4 CONTEXT (§4.1.1) ══════════ -->
+<div class="slide">
+  <div class="eyebrow">§4.1.1 · C4 Level 1</div>
+  <h2>System Context</h2>
+  <div style="width:100%;max-width:980px;display:flex;flex-direction:column;align-items:center;gap:16px;" class="anim">
+    <div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center;">
+      <div class="card" style="border-top:3px solid var(--green);text-align:center;min-width:150px;"><div style="font-size:22px;">🧑‍💻</div><div style="font-weight:700;font-size:13px;margin-top:4px;">Shopper</div><div style="font-size:11px;color:var(--muted);">web / mobile · HTTPS</div></div>
+      <div class="card" style="border-top:3px solid var(--green);text-align:center;min-width:150px;"><div style="font-size:22px;">🤝</div><div style="font-weight:700;font-size:13px;margin-top:4px;">Partner</div><div style="font-size:11px;color:var(--muted);">REST + API key</div></div>
+      <div class="card" style="border-top:3px solid var(--green);text-align:center;min-width:150px;"><div style="font-size:22px;">🧑‍🔧</div><div style="font-weight:700;font-size:13px;margin-top:4px;">Ops / On-call</div><div style="font-size:11px;color:var(--muted);">dashboards / alerts</div></div>
+    </div>
+    <div style="color:var(--dim);font-size:20px;">↓</div>
+    <div style="width:100%;max-width:640px;background:linear-gradient(145deg,rgba(59,130,246,.12),rgba(74,222,128,.05));border:1.5px solid var(--blue-x);border-radius:14px;padding:20px;text-align:center;box-shadow:0 0 32px rgba(59,130,246,.18);">
+      <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--blue);margin-bottom:6px;">E-Commerce Platform (AWS)</div>
+      <div style="font-size:15px;font-weight:600;">Storefront + API + Data + Auth + Real-time Processing</div>
+    </div>
+    <div style="color:var(--dim);font-size:20px;">↓</div>
+    <div class="cols-4" style="max-width:900px;">
+      <div class="card" style="text-align:center;"><div style="font-size:20px;">💳</div><div style="font-size:12px;font-weight:700;color:var(--orange);margin-top:4px;">Payment</div><div style="font-size:10.5px;color:var(--muted);">Stripe / Adyen</div></div>
+      <div class="card" style="text-align:center;"><div style="font-size:20px;">🪪</div><div style="font-size:12px;font-weight:700;color:var(--purple);margin-top:4px;">External IdP</div><div style="font-size:10.5px;color:var(--muted);">Google / Apple / SAML</div></div>
+      <div class="card" style="text-align:center;"><div style="font-size:20px;">📧</div><div style="font-size:12px;font-weight:700;color:var(--blue);margin-top:4px;">Email / SMS</div><div style="font-size:10.5px;color:var(--muted);">SES / SNS / Twilio</div></div>
+      <div class="card" style="text-align:center;"><div style="font-size:20px;">📊</div><div style="font-size:12px;font-weight:700;color:var(--green);margin-top:4px;">Observability</div><div style="font-size:10.5px;color:var(--muted);">Grafana / PagerDuty</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ 10 · C4 CONTAINER (§4.1.2) ══════════ -->
+<div class="slide scroll">
+  <div class="eyebrow">§4.1.2 · C4 Level 2</div>
+  <h2>Container / Component view</h2>
+  <div style="width:100%;max-width:1000px;display:flex;flex-direction:column;align-items:center;gap:0;">
+
+    <!-- INPUT nodes -->
+    <div style="display:flex;gap:14px;justify-content:center;">
+      <div class="node"><div class="node-box sm"><div style="font-size:30px;">🧑‍💻</div></div><div class="node-sub">Shopper · web/mobile</div></div>
+      <div class="node"><div class="node-box sm"><div style="font-size:28px;">🤝</div></div><div class="node-sub">Partner · API key</div></div>
+    </div>
+    <div class="bridge">
+      <div class="stub" style="background:rgba(96,180,255,.5);"></div>
+      <div style="width:2px;height:12px;position:relative;overflow:visible;"><span class="fd" style="background:var(--blue);box-shadow:0 0 8px var(--blue);animation:flowDown 1.3s linear infinite;"></span></div>
+      <div class="tip" style="border-top:8px solid rgba(96,180,255,.5);"></div>
+    </div>
+
+    <!-- ── EDGE BAND ── -->
+    <div class="band band-p" style="max-width:940px;">
+      <div class="band-hd">
+        <span class="ic" style="background:rgba(251,146,60,.2);border:1px solid rgba(251,146,60,.4);"><img data-ico="cloudfront"></span>
+        <span class="t" style="color:var(--orange);">Edge · Global</span>
+        <span class="rule" style="background:linear-gradient(to right,rgba(251,146,60,.3),transparent);"></span>
+      </div>
+      <div class="band-row">
+        <div class="bnode" style="border-top:3px solid var(--orange);"><img data-ico="route53"><div class="t orange">Route 53</div><div class="s">DNS · failover</div></div>
+        <div class="harr"><span class="lab">DNS</span><div class="track"><div class="ln" style="background:rgba(251,146,60,.4);"><span class="dt" style="background:var(--orange);box-shadow:0 0 6px var(--orange);"></span></div><div class="hd" style="border-left:7px solid rgba(251,146,60,.5);"></div></div></div>
+        <div class="bnode" style="border-top:3px solid var(--blue);"><img data-ico="cloudfront"><div class="t blue">CloudFront +WAF</div><div class="s">CDN · Shield</div></div>
+        <div class="harr"><span class="lab">static</span><div class="track"><div class="ln" style="background:rgba(96,180,255,.4);"><span class="dt" style="background:var(--blue);box-shadow:0 0 6px var(--blue);animation-delay:.2s;"></span></div><div class="hd" style="border-left:7px solid rgba(96,180,255,.5);"></div></div></div>
+        <div class="bnode" style="border-top:3px solid var(--green);"><img data-ico="s3"><div class="t accent">S3 static</div><div class="s">SPA / images</div></div>
+      </div>
+    </div>
+
+    <!-- bridge: HTTPS -->
+    <div class="bridge">
+      <div class="stub" style="background:rgba(252,211,77,.5);"></div>
+      <div class="pill" style="background:rgba(252,211,77,.1);border:1px solid rgba(252,211,77,.5);color:var(--yellow);box-shadow:0 0 12px rgba(252,211,77,.12);">HTTPS · dynamic API traffic</div>
+      <div style="width:2px;height:10px;position:relative;overflow:visible;background:rgba(252,211,77,.5);"><span class="fd" style="background:var(--yellow);box-shadow:0 0 8px var(--yellow);animation:flowDown .9s linear .3s infinite;"></span></div>
+      <div class="tip" style="border-top:8px solid rgba(252,211,77,.5);"></div>
+    </div>
+
+    <!-- ── INGRESS BAND ── -->
+    <div class="band band-b" style="max-width:940px;">
+      <div class="band-hd">
+        <span class="ic" style="background:rgba(252,211,77,.2);border:1px solid rgba(252,211,77,.4);"><img data-ico="apigw"></span>
+        <span class="t" style="color:var(--yellow);">Ingress</span>
+        <span class="rule" style="background:linear-gradient(to right,rgba(252,211,77,.3),transparent);"></span>
+      </div>
+      <div class="band-row" style="max-width:520px;margin:0 auto;">
+        <div class="bnode" style="border-top:3px solid var(--purple);"><img data-ico="alb"><div class="t purple">ALB</div><div class="s">multi-AZ L7</div></div>
+        <div class="harr"><span class="lab">HTTP</span><div class="track"><div class="ln" style="background:rgba(192,132,252,.4);"><span class="dt" style="background:var(--purple);box-shadow:0 0 6px var(--purple);"></span></div><div class="hd" style="border-left:7px solid rgba(192,132,252,.5);"></div></div></div>
+        <div class="bnode" style="border-top:3px solid var(--yellow);"><img data-ico="apigw"><div class="t yellow">API Gateway</div><div class="s">rate limit · schema</div></div>
+      </div>
+    </div>
+
+    <!-- fan-out tree: API GW → 6 microservices -->
+    <div class="fanout" style="max-width:840px;">
+      <div class="stem" style="background:rgba(96,180,255,.6);"></div>
+      <div class="bar" style="background:linear-gradient(to right,rgba(96,180,255,.55),rgba(74,222,128,.55),rgba(192,132,252,.55),rgba(251,146,60,.55),rgba(252,211,77,.55),rgba(248,113,113,.55));"></div>
+      <div class="drop" style="left:8.3%;background:rgba(96,180,255,.6);"></div>
+      <div class="drop" style="left:25%;background:rgba(74,222,128,.6);"></div>
+      <div class="drop" style="left:41.6%;background:rgba(192,132,252,.6);"></div>
+      <div class="drop" style="left:58.3%;background:rgba(251,146,60,.6);"></div>
+      <div class="drop" style="left:75%;background:rgba(252,211,77,.6);"></div>
+      <div class="drop" style="left:91.6%;background:rgba(248,113,113,.6);"></div>
+    </div>
+
+    <!-- ── EKS BAND (workers) ── -->
+    <div class="band band-b" style="max-width:940px;">
+      <div class="band-hd">
+        <span class="ic" style="background:rgba(96,180,255,.2);border:1px solid rgba(96,180,255,.4);"><img data-ico="eks"></span>
+        <span class="t" style="color:var(--blue);">Application · Amazon EKS · Kubernetes · 3 AZs</span>
+        <span class="rule" style="background:linear-gradient(to right,rgba(96,180,255,.3),transparent);"></span>
+      </div>
+      <div class="band-row" style="gap:6px;">
+        <div class="bnode" style="border-top:3px solid var(--blue);"><img data-ico="eks"><div class="t blue">Catalog</div><div class="s">product API</div></div>
+        <div class="bnode" style="border-top:3px solid var(--green);"><img data-ico="eks"><div class="t accent">Cart</div><div class="s">session · Redis</div></div>
+        <div class="bnode" style="border-top:3px solid var(--purple);"><img data-ico="eks"><div class="t purple">Checkout</div><div class="s">orchestrator</div></div>
+        <div class="bnode" style="border-top:3px solid var(--orange);"><img data-ico="eks"><div class="t orange">Order</div><div class="s">state machine</div></div>
+        <div class="bnode" style="border-top:3px solid var(--yellow);"><img data-ico="eks"><div class="t yellow">Payment</div><div class="s">tokenized</div></div>
+        <div class="bnode" style="border-top:3px solid var(--red);"><img data-ico="kinesis"><div class="t red">Real-time</div><div class="s">Flink / KStreams</div></div>
+      </div>
+    </div>
+
+    <!-- bridge: persist + publish -->
+    <div class="bridge">
+      <div class="stub" style="background:rgba(74,222,128,.5);"></div>
+      <div class="pill" style="background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.5);color:var(--green);box-shadow:0 0 12px rgba(74,222,128,.12);">SQL txn · RESP · produce/consume events</div>
+      <div style="width:2px;height:10px;position:relative;overflow:visible;background:rgba(74,222,128,.5);"><span class="fd" style="background:var(--green);box-shadow:0 0 8px var(--green);animation:flowDown 1.1s linear .2s infinite;"></span></div>
+      <div class="tip" style="border-top:8px solid rgba(74,222,128,.5);"></div>
+    </div>
+
+    <!-- ── DATA + EVENT + SECURITY BAND ── -->
+    <div class="band band-g" style="max-width:940px;">
+      <div class="band-hd">
+        <span class="ic" style="background:rgba(74,222,128,.2);border:1px solid rgba(74,222,128,.4);"><img data-ico="aurora"></span>
+        <span class="t" style="color:var(--green);">Data · Eventing · Security — multi-AZ</span>
+        <span class="rule" style="background:linear-gradient(to right,rgba(74,222,128,.3),transparent);"></span>
+      </div>
+      <div class="band-row" style="gap:6px;flex-wrap:wrap;">
+        <div class="bnode" style="border-top:3px solid var(--green);"><img data-ico="aurora"><div class="t accent">Aurora</div><div class="s">source of truth</div></div>
+        <div class="bnode" style="border-top:3px solid var(--green);"><img data-ico="elasticache"><div class="t accent">Redis</div><div class="s">cache·cart·reserve</div></div>
+        <div class="bnode" style="border-top:3px solid var(--green);"><img data-ico="opensearch"><div class="t accent">OpenSearch</div><div class="s">search</div></div>
+        <div class="bnode" style="border-top:3px solid var(--green);"><img data-ico="s3"><div class="t accent">S3 lake</div><div class="s">backups</div></div>
+        <div class="bnode" style="border-top:3px solid var(--purple);"><img data-ico="msk"><div class="t purple">MSK/Kafka</div><div class="s">event bus</div></div>
+        <div class="bnode" style="border-top:3px solid var(--orange);"><img data-ico="cognito"><div class="t orange">Cognito</div><div class="s">OIDC</div></div>
+        <div class="bnode" style="border-top:3px solid var(--yellow);"><img data-ico="secrets"><div class="t yellow">Secrets+KMS</div><div class="s">IRSA</div></div>
+        <div class="bnode" style="border-top:3px solid var(--blue);"><img data-ico="cloudwatch"><div class="t blue">OTel+CW</div><div class="s">observe</div></div>
+      </div>
+    </div>
+  </div>
+  <div style="width:100%;max-width:960px;margin-top:16px;">
+    <div class="subhead">Service-to-service call contracts</div>
+    <table class="dt">
+      <thead><tr><th>Caller → Callee</th><th>Mechanism</th><th>Error behavior</th></tr></thead>
+      <tbody>
+        <tr><td>Checkout → Cart</td><td>HTTP/JSON</td><td>timeout → circuit-breaker fallback</td></tr>
+        <tr><td>Checkout → Redis</td><td>RESP <code>DECR</code>/<code>INCR</code></td><td>atomic stock reserve; negative → reject as out-of-stock</td></tr>
+        <tr><td>Checkout → Payment</td><td>HTTP/JSON</td><td>failure → order <code>payment_failed</code>, no charge</td></tr>
+        <tr><td>Checkout → Order</td><td>HTTP/JSON</td><td>failure <em>after charge</em> → auto-void/refund (§4.3.1b)</td></tr>
+        <tr><td>Payment → Payment Provider</td><td>HTTPS (tokenized)</td><td>external card handler; no PAN stored</td></tr>
+        <tr><td>Catalog → Redis</td><td>RESP</td><td>hot-product cache + stock read for display</td></tr>
+        <tr><td>Order → Aurora</td><td>PostgreSQL txn</td><td>order+payment row; failure → rollback</td></tr>
+        <tr><td>Order → MSK</td><td>Kafka producer (async)</td><td>broker down → local outbox + retry</td></tr>
+        <tr><td>Any svc → Cognito</td><td>OIDC / JWKS</td><td>keys cached; validate signature + claims</td></tr>
+        <tr><td>Real-time → Aurora/OpenSearch/S3</td><td>driver / bulk API</td><td>idempotent upserts (replay-safe); reconciles stock</td></tr>
+      </tbody>
+    </table>
+    <div class="info" style="margin-top:12px;"><span>💳</span><span>The <strong>Payment Provider</strong> (Stripe / Adyen) is <strong>external</strong> — Payment calls it over HTTPS with a token and returns an auth ref; it is not an AWS component. "Database-per-service" is <strong>logical</strong> (own schemas in one Aurora cluster).</span></div>
+  </div>
+</div>
+
+<!-- ══════════ 11 · DEPLOYMENT (§4.1.3) ══════════ -->
+<div class="slide">
+  <div class="eyebrow">§4.1.3 · Deployment</div>
+  <h2>Regions, AZs &amp; nodes</h2>
+  <div class="cols-2 anim" style="max-width:1000px;align-items:start;">
+    <div style="background:linear-gradient(145deg,rgba(74,222,128,.08),transparent);border:1.5px solid rgba(74,222,128,.4);border-radius:14px;padding:16px;">
+      <div class="subhead" style="color:var(--green);">Primary · us-east-1 · ACTIVE</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div class="card" style="padding:12px;"><strong style="font-size:12px;color:var(--blue);">AZ-a</strong><div style="font-size:11.5px;color:var(--muted);margin-top:3px;">EKS nodes (On-Demand + Spot) · Aurora <strong>writer</strong> · Redis primary</div></div>
+        <div class="card" style="padding:12px;"><strong style="font-size:12px;color:var(--blue);">AZ-b</strong><div style="font-size:11.5px;color:var(--muted);margin-top:3px;">EKS nodes · Aurora replica · Redis replica</div></div>
+        <div class="card" style="padding:12px;"><strong style="font-size:12px;color:var(--blue);">AZ-c</strong><div style="font-size:11.5px;color:var(--muted);margin-top:3px;">EKS nodes · Aurora replica · MSK broker</div></div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div style="background:linear-gradient(145deg,rgba(252,211,77,.07),transparent);border:1.5px solid rgba(252,211,77,.4);border-radius:14px;padding:16px;">
+        <div class="subhead" style="color:var(--yellow);">DR · us-west-2 · WARM STANDBY</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.7;">
+          • EKS at <strong>minimum</strong> nodes (Karpenter scales on failover)<br>
+          • Aurora Global DB replica → promote on failover<br>
+          • S3 Cross-Region Replication target<br>
+          • <strong>MSK DR cluster</strong> (Replicator / MirrorMaker 2)
+        </div>
+      </div>
+      <div class="info"><span>🔁</span><span><strong>Aurora Global DB</strong> + <strong>S3 CRR</strong> + <strong>MSK Replicator / MM2</strong> replicate async; <strong>Route 53</strong> flips traffic (assume 60s TTL).</span></div>
+      <div class="warn"><span>⏱️</span><span><strong>RPO is not zero.</strong> Async replication → worst-case RPO = replication lag at failure (grows during flash-sale bursts). Target <strong>&lt; 1 min under normal lag</strong>; monitor + alert on lag.</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ 12 · DOMAIN MODEL (§4.1.4) ══════════ -->
+<div class="slide scroll">
+  <div class="eyebrow">§4.1.4 · Domain Class Diagram</div>
+  <h2>Entities &amp; architectural invariants</h2>
+  <div class="cols-2 anim" style="max-width:1000px;align-items:start;">
+    <div class="cb" style="font-size:11.5px;">
+<span class="cc">// core domain entities</span>
+<span class="ck">Customer</span>  { id, email, status }
+  └─ 1..* <span class="ck">Cart</span>       { id, customerId, subtotal() }
+            └─ 1..* <span class="ck">CartItem</span> { sku, qty, unitPrice }
+                       └─ *..1 <span class="ck">Product</span> { sku, title, price }
+                                  └─ 1..1 <span class="ck">Inventory</span> { available, reserved }
+  └─ 1..* <span class="ck">Order</span>      { id, status, total, placedAt }
+            ├─ 1..1 <span class="ck">Payment</span>  { orderId, status, providerRef }
+            └─ 1..* <span class="ck">CartItem</span> <span class="cc">(snapshot)</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:9px;">
+      <div class="subhead">Service interaction rules</div>
+      <div class="note"><span>①</span><span><strong>Only the Order service writes order <em>and payment</em> rows</strong> (one txn). Payment is stateless — no dual-write.</span></div>
+      <div class="info"><span>②</span><span><strong>Cart lives in Redis</strong> (async persistence) — ephemeral, cache-like, not source of truth.</span></div>
+      <div class="note"><span>③</span><span><strong>Stock reserved synchronously in Redis</strong> (<code>DECR stock:{sku}</code>, reject if negative) — prevents oversell on the hot path; Aurora reconciled asynchronously by the stream consumer.</span></div>
+      <div class="info"><span>④</span><span><strong>Every state change publishes an event</strong> to Kafka; consumers are the only writers to their own projections.</span></div>
+      <div class="warn"><span>⑤</span><span><strong>No service calls another service's database.</strong> "Database-per-service" is <strong>logical</strong> — own schemas within one Aurora cluster; cross-service data via REST or Kafka.</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ 12b · DATA STORES EXPLAINED ══════════ -->
+<div class="slide scroll">
+  <div class="eyebrow">Data Layer · Mental Model</div>
+  <h2 style="margin-bottom:4px;">Five stores, five jobs</h2>
+  <p class="subhead" style="margin-bottom:16px;">Aurora = truth · Redis = speed · OpenSearch = findability · Kafka = glue · S3 = warehouse</p>
+
+  <div style="width:100%;max-width:1000px;">
+    <table class="dt">
+      <thead><tr><th>Store</th><th>Type</th><th>Great at</th><th>Bad at</th><th>Holds here</th><th>OK to lose?</th></tr></thead>
+      <tbody>
+        <tr><td><strong class="accent">Aurora</strong></td><td>Relational OLTP</td><td>ACID txns, strong consistency, joins</td><td>full-text search, huge fan-out reads</td><td>orders, payments, customers, products (source of truth)</td><td><span class="tag tr">No — authoritative</span></td></tr>
+        <tr><td><strong class="accent">Redis</strong></td><td>In-memory KV</td><td>sub-ms reads, atomic counters</td><td>durability, complex queries</td><td>sessions, cart, hot cache, <strong>stock-reservation counters</strong></td><td><span class="tag ty">Mostly — rebuildable from Aurora</span></td></tr>
+        <tr><td><strong class="accent">OpenSearch</strong></td><td>Search index</td><td>full-text + faceted search</td><td>system of record, writes-as-truth</td><td>catalog / faceted search projection</td><td><span class="tag tg">Yes — reindex from Aurora</span></td></tr>
+        <tr><td><strong class="purple">Kafka</strong></td><td>Event log</td><td>decoupling, replay, spike absorption</td><td>random access, long-term store</td><td>every state-change event (the glue)</td><td><span class="tag ty">Bounded — replay window</span></td></tr>
+        <tr><td><strong class="accent">S3</strong></td><td>Object store</td><td>cheap, durable, infinite scale</td><td>low-latency txn reads</td><td>images, backups, analytics data lake</td><td><span class="tag tr">No — 11-nines durable</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="subhead" style="margin:18px 0 8px;">One shopper journey, across all five</div>
+  <div style="display:flex;align-items:flex-start;width:100%;max-width:1040px;gap:0;">
+    <div class="node"><div class="node-box sm glow-b"><img data-ico="opensearch"></div><div class="node-sub">search → OpenSearch</div></div>
+    <div class="hconn"><span class="lbl">product</span><span class="td" style="background:var(--green);box-shadow:0 0 7px var(--green);"></span></div>
+    <div class="node"><div class="node-box sm glow-g"><img data-ico="aurora"></div><div class="node-sub">detail → Aurora</div></div>
+    <div class="hconn"><span class="lbl">add to cart</span><span class="td" style="background:var(--green);box-shadow:0 0 7px var(--green);"></span></div>
+    <div class="node"><div class="node-box sm glow-g"><img data-ico="elasticache"></div><div class="node-sub">cart+reserve → Redis</div></div>
+    <div class="hconn"><span class="lbl">checkout txn</span><span class="td" style="background:var(--green);box-shadow:0 0 7px var(--green);"></span></div>
+    <div class="node"><div class="node-box sm glow-g"><img data-ico="aurora"></div><div class="node-sub">order → Aurora</div></div>
+    <div class="hconn"><span class="lbl">OrderPlaced</span><span class="td" style="background:var(--purple);box-shadow:0 0 7px var(--purple);"></span></div>
+    <div class="node"><div class="node-box sm glow-p"><img data-ico="msk"></div><div class="node-sub">fan-out → Kafka</div></div>
+    <div class="hconn"><span class="lbl below">analytics</span><span class="td" style="background:var(--blue);box-shadow:0 0 7px var(--blue);"></span></div>
+    <div class="node"><div class="node-box sm"><img data-ico="s3"></div><div class="node-sub">events → S3 lake</div></div>
+  </div>
+</div>
+
+<!-- ══════════ 13 · APP MODULES (§4.2) ══════════ -->
+<div class="slide">
+  <div class="eyebrow">§4.2 · Application Modules</div>
+  <h2>Modules &amp; layers</h2>
+  <div class="cols-2 anim" style="max-width:1000px;align-items:start;">
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div class="card" style="border-left:4px solid var(--blue);"><strong style="color:var(--blue);font-size:13px;">Core components</strong><div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.6;">Front end (SPA/SSR on S3+CloudFront; SSR pods for SEO) · API Gateway (rate limit, schema) · Microservices on EKS: Catalog, Cart, Checkout, Order, Payment, Auth adapter, Real-time processors</div></div>
+      <div class="card" style="border-left:4px solid var(--green);"><strong style="color:var(--green);font-size:13px;">Database layer</strong><div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.6;">Aurora PostgreSQL (source of truth) · ElastiCache Redis (session/cart/cache) · OpenSearch (search projection) · S3 (objects, backups, data lake)</div></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div class="card" style="border-left:4px solid var(--purple);"><strong style="color:var(--purple);font-size:13px;">Business logic modules</strong><div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.6;">Checkout orchestration · <strong>order state machine</strong> (next slide) · <strong>inventory reservation via atomic Redis counters</strong> (sync <code>DECR</code>; async Aurora reconcile) · fraud scoring (stream) · personalization signals (stream)</div></div>
+      <div class="card" style="border-left:4px solid var(--orange);"><strong style="color:var(--orange);font-size:13px;">APIs &amp; external</strong><div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.6;">REST API (public/partner) · OIDC to Cognito/IdP · HTTPS to payment provider · SES/SNS notifications · OTel export</div></div>
+      <div class="info"><span>🧱</span><span><strong>Layers:</strong> presentation (SPA) → edge (CDN/WAF) → ingress (ALB/API GW) → application → data → eventing (Kafka)</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ 13b · ORDER STATE MACHINE (§4.2) ══════════ -->
+<div class="slide">
+  <div class="eyebrow">§4.2 · Order State Machine</div>
+  <h2 style="margin-bottom:6px;">Order lifecycle</h2>
+  <p class="subhead" style="margin-bottom:22px;">The lifecycle is explicit because it drives correctness — including the compensation path.</p>
+
+  <div style="display:flex;flex-direction:column;gap:16px;width:100%;max-width:1000px;" class="anim">
+    <!-- happy path row -->
+    <div style="display:flex;align-items:center;justify-content:center;gap:4px;flex-wrap:wrap;">
+      <span class="tag tb">created</span><span class="larrow">→</span>
+      <span class="tag tg">stock_reserved</span><span class="larrow">→</span>
+      <span class="tag ty">payment_pending</span><span class="larrow">→</span>
+      <span class="tag tg">paid</span><span class="larrow">→</span>
+      <span class="tag tg">placed</span><span class="larrow">→</span>
+      <span class="tag tg">fulfilled</span>
+    </div>
+    <!-- terminal / off-ramp states -->
+    <div class="cols-3" style="max-width:1000px;">
+      <div class="card" style="border-left:4px solid var(--red);"><strong class="red" style="font-size:12.5px;">rejected</strong><div style="font-size:11.5px;color:var(--muted);margin-top:5px;line-height:1.5;">from <span class="tag tb">created</span> when <code>DECR</code> would go negative — out of stock, before any charge.</div></div>
+      <div class="card" style="border-left:4px solid var(--red);"><strong class="red" style="font-size:12.5px;">payment_failed</strong><div style="font-size:11.5px;color:var(--muted);margin-top:5px;line-height:1.5;">from <span class="tag ty">payment_pending</span> when the provider declines. No order persisted.</div></div>
+      <div class="card" style="border-left:4px solid var(--orange);"><strong class="orange" style="font-size:12.5px;">compensating → voided</strong><div style="font-size:11.5px;color:var(--muted);margin-top:5px;line-height:1.5;">from <span class="tag tg">paid</span> when the order write fails — auto-void/refund + release reservation (§4.3.1b).</div></div>
+    </div>
+    <div class="info"><span>🧭</span><span><strong>cancelled</strong> is reachable from <span class="tag tg">placed</span> (customer or fraud). Every transition emits an event, so downstream projections stay consistent with the order's true state.</span></div>
+  </div>
+</div>
+
+<!-- ══════════ 14 · FLOW: CHECKOUT (§4.3.1) ══════════ -->
+<div class="slide scroll">
+  <div class="eyebrow">§4.3.1 · Transaction Flow</div>
+  <h2 style="margin-bottom:12px;">Checkout — happy path</h2>
+
+  <!-- animated AWS-icon flow chain -->
+  <div style="display:flex;align-items:flex-start;width:100%;max-width:1040px;gap:0;margin-bottom:20px;">
+    <div class="node"><div class="node-box glow-b"><img data-ico="cloudfront"></div><div class="node-lbl">CloudFront</div><div class="node-sub">POST /checkout +JWT</div></div>
+    <div class="hconn"><span class="lbl">verify JWT</span><span class="td" style="background:var(--blue);box-shadow:0 0 7px var(--blue);"></span></div>
+    <div class="node"><div class="node-box glow-y"><img data-ico="apigw"></div><div class="node-lbl">API Gateway</div><div class="node-sub">createOrder</div></div>
+    <div class="hconn"><span class="lbl">orchestrate</span><span class="td" style="background:var(--purple);box-shadow:0 0 7px var(--purple);"></span></div>
+    <div class="node"><div class="node-box glow-p pulse"><img data-ico="eks"></div><div class="node-lbl">Checkout</div><div class="node-sub">orchestrator</div></div>
+    <div class="hconn"><span class="lbl">getCart · RESP</span><span class="td" style="background:var(--green);box-shadow:0 0 7px var(--green);"></span></div>
+    <div class="node"><div class="node-box glow-g"><img data-ico="elasticache"></div><div class="node-lbl">Cart · Redis</div><div class="node-sub">snapshot → DECR reserve</div></div>
+    <div class="hconn"><span class="lbl">SQL txn</span><span class="td" style="background:var(--green);box-shadow:0 0 7px var(--green);"></span></div>
+    <div class="node"><div class="node-box glow-g"><img data-ico="aurora"></div><div class="node-lbl">Aurora</div><div class="node-sub">INSERT order+pay</div></div>
+    <div class="hconn"><span class="lbl">produce</span><span class="td" style="background:var(--orange);box-shadow:0 0 7px var(--orange);"></span></div>
+    <div class="node"><div class="node-box glow-p"><img data-ico="msk"></div><div class="node-lbl">MSK/Kafka</div><div class="node-sub">OrderPlaced</div></div>
+  </div>
+
+  <div class="flow anim" style="max-width:960px;">
+    <div class="fstep"><span class="fnum">3</span><span class="factor">Checkout → Redis</span><span class="ftext"><code style="color:var(--green)">DECR stock:{sku}</code> reserves stock <strong>before</strong> charging — sold-out is rejected before any money moves (oversell guard).</span></div>
+    <div class="fstep"><span class="fnum">4</span><span class="factor">Checkout → Payment → PP</span><span class="ftext"><code style="color:var(--yellow)">authorize(amount, token)</code> → tokenized charge → <span class="m">authorized(ref)</span> · failure → <code style="color:var(--red)">payment_failed</code>, no charge</span></div>
+    <div class="note"><span>⚡</span><span>Async consumers of <code style="color:var(--green)">OrderPlaced</code>: inventory <strong>reconcile</strong> (Aurora) · fraud score · analytics · email. Checkout returns <strong>201 Created</strong> without blocking on them.</span></div>
+    <div class="warn"><span>↩️</span><span><strong>Compensation (next slide):</strong> if the order write fails <em>after</em> a successful charge, Checkout auto-voids/refunds and releases the reservation — a customer is never charged with no order.</span></div>
+  </div>
+</div>
+
+<!-- ══════════ 14b · FLOW: CHECKOUT COMPENSATION (§4.3.1b) ══════════ -->
+<div class="slide">
+  <div class="eyebrow">§4.3.1b · Transaction Flow</div>
+  <h2 style="margin-bottom:6px;">Checkout — <span class="red">compensation</span> (card charged, order write fails)</h2>
+  <p class="subhead" style="margin-bottom:18px;">The worst outcome is a customer charged with no order. The compensating transaction undoes it.</p>
+
+  <div style="display:flex;align-items:flex-start;width:100%;max-width:1040px;gap:0;margin-bottom:20px;">
+    <div class="node"><div class="node-box glow-p pulse"><img data-ico="eks"></div><div class="node-lbl">Checkout</div><div class="node-sub">orchestrator</div></div>
+    <div class="hconn"><span class="lbl">authorize</span><span class="td" style="background:var(--yellow);box-shadow:0 0 7px var(--yellow);"></span></div>
+    <div class="node"><div class="node-box glow-y"><img data-ico="eks"></div><div class="node-lbl">Payment</div><div class="node-sub">charge → ref ✓</div></div>
+    <div class="hconn"><span class="lbl">placeOrder</span><span class="td" style="background:var(--red);box-shadow:0 0 7px var(--red);"></span></div>
+    <div class="node"><div class="node-box" style="border-color:var(--red);box-shadow:0 0 24px rgba(248,113,113,.4);"><img data-ico="aurora"></div><div class="node-lbl red">Aurora</div><div class="node-sub">INSERT ✗ FAILS</div></div>
+    <div class="hconn"><span class="lbl below">void/refund(ref)</span><span class="td" style="background:var(--green);box-shadow:0 0 7px var(--green);"></span></div>
+    <div class="node"><div class="node-box glow-g"><img data-ico="eks"></div><div class="node-lbl">Payment</div><div class="node-sub">reverse charge</div></div>
+    <div class="hconn"><span class="lbl">INCR release</span><span class="td" style="background:var(--green);box-shadow:0 0 7px var(--green);"></span></div>
+    <div class="node"><div class="node-box glow-g"><img data-ico="elasticache"></div><div class="node-lbl">Redis</div><div class="node-sub">release reservation</div></div>
+  </div>
+
+  <div class="flow anim" style="max-width:960px;">
+    <div class="fstep"><span class="fnum">1</span><span class="factor">charge succeeds</span><span class="ftext">Payment authorizes the card and returns <code style="color:var(--green)">ref</code>.</span></div>
+    <div class="fstep"><span class="fnum">2</span><span class="factor">order write FAILS</span><span class="ftext">Aurora <code style="color:var(--red)">INSERT order+payment</code> fails (constraint / outage); nothing is persisted, Order returns 5xx.</span></div>
+    <div class="fstep"><span class="fnum">3</span><span class="factor">compensate</span><span class="ftext">Checkout calls <code style="color:var(--green)">void/refund(ref)</code> on the provider and <code style="color:var(--green)">INCR stock:{sku}</code> to release the reservation; attempt marked <code style="color:var(--red)">payment_failed / voided</code>.</span></div>
+    <div class="note"><span>🛡️</span><span>This is the single most important correctness guarantee on the money path — charge and order commit are made atomic <em>through compensation</em>, since a true 2-phase commit across an external provider isn't possible.</span></div>
+  </div>
+</div>
+
+<!-- ══════════ 15 · FLOW: AUTH (§4.3.2) ══════════ -->
+<div class="slide">
+  <div class="eyebrow">§4.3.2 · Transaction Flow</div>
+  <h2 style="margin-bottom:14px;">Authentication / token issuance (OIDC)</h2>
+
+  <div style="display:flex;align-items:flex-start;width:100%;max-width:1000px;gap:0;margin-bottom:22px;">
+    <div class="node"><div class="node-box"><div style="font-size:38px;">🧑‍💻</div></div><div class="node-lbl">Shopper</div><div class="node-sub">credentials</div></div>
+    <div class="hconn"><span class="lbl">login</span><span class="td" style="background:var(--blue);box-shadow:0 0 7px var(--blue);"></span></div>
+    <div class="node"><div class="node-box"><div style="font-size:36px;">⚛️</div></div><div class="node-lbl">SPA</div><div class="node-sub">/oauth2 (PKCE)</div></div>
+    <div class="hconn"><span class="lbl below">id+access JWT</span><span class="td" style="background:var(--orange);box-shadow:0 0 7px var(--orange);"></span></div>
+    <div class="node"><div class="node-box glow-y pulse"><img data-ico="cognito"></div><div class="node-lbl">Cognito</div><div class="node-sub">OIDC · issue JWT</div></div>
+    <div class="hconn"><span class="lbl">JWKS (cached)</span><span class="td" style="background:var(--purple);box-shadow:0 0 7px var(--purple);"></span></div>
+    <div class="node"><div class="node-box glow-y"><img data-ico="apigw"></div><div class="node-lbl">API Gateway</div><div class="node-sub">verify sig+claims</div></div>
+    <div class="hconn"><span class="lbl">trusted id</span><span class="td" style="background:var(--green);box-shadow:0 0 7px var(--green);"></span></div>
+    <div class="node"><div class="node-box glow-b"><img data-ico="eks"></div><div class="node-lbl">Any svc</div><div class="node-sub">response</div></div>
+  </div>
+
+  <div class="info anim" style="max-width:900px;"><span>🔑</span><span>Services trust only the <strong>OIDC discovery doc + JWKS</strong> — so Cognito is swappable for Keycloak / Auth0 with no app-code change. Federated login (Google / Apple / SAML) plugs in behind Cognito.</span></div>
+</div>
+
+<!-- ══════════ 16 · FLOW: REAL-TIME (§4.3.3) ══════════ -->
+<div class="slide">
+  <div class="eyebrow">§4.3.3 · Transaction Flow</div>
+  <h2 style="margin-bottom:10px;">Real-time event processing</h2>
+  <div style="width:100%;max-width:960px;display:flex;flex-direction:column;align-items:center;" class="anim">
+
+    <!-- Order → Kafka -->
+    <div style="display:flex;align-items:center;gap:0;">
+      <div class="node"><div class="node-box sm"><img data-ico="eks"></div><div class="node-sub">Order svc</div></div>
+      <div class="hconn" style="width:120px;flex:0 0 120px;"><span class="lbl">OrderPlaced</span><span class="td" style="background:var(--purple);box-shadow:0 0 7px var(--purple);"></span></div>
+      <div class="node"><div class="node-box glow-p pulse"><img data-ico="msk"></div><div class="node-lbl">MSK / Kafka</div><div class="node-sub">event backbone</div></div>
+    </div>
+
+    <!-- fan-out tree to 3 consumers -->
+    <div class="fanout" style="max-width:640px;margin-top:6px;">
+      <div class="stem" style="background:rgba(192,132,252,.6);"></div>
+      <div class="bar" style="left:16%;right:16%;background:linear-gradient(to right,rgba(74,222,128,.6),rgba(248,113,113,.6),rgba(96,180,255,.6));"></div>
+      <div class="drop" style="left:16%;background:rgba(74,222,128,.6);"></div>
+      <div class="drop" style="left:50%;background:rgba(248,113,113,.6);"></div>
+      <div class="drop" style="left:84%;background:rgba(96,180,255,.6);"></div>
+    </div>
+
+    <!-- 3 consumer groups w/ their sinks -->
+    <div class="cols-3" style="max-width:900px;">
+      <div class="card" style="border-top:3px solid var(--green);text-align:center;">
+        <img data-ico="kinesis" style="width:30px;height:30px;"><div style="font-weight:700;color:var(--green);font-size:13px;margin:6px 0 4px;">Inventory consumer</div>
+        <div style="font-size:11px;color:var(--muted);line-height:1.5;">reconcile authoritative decrement — <strong>idempotent</strong> (checkout already reserved in Redis)</div>
+        <div style="margin-top:8px;display:flex;justify-content:center;gap:6px;align-items:center;"><span style="font-size:10px;color:var(--dim);">→</span><img data-ico="aurora" style="width:24px;height:24px;"><span class="node-sub">Aurora</span></div>
+      </div>
+      <div class="card" style="border-top:3px solid var(--red);text-align:center;">
+        <img data-ico="kinesis" style="width:30px;height:30px;"><div style="font-weight:700;color:var(--red);font-size:13px;margin:6px 0 4px;">Fraud consumer</div>
+        <div style="font-size:11px;color:var(--muted);line-height:1.5;">score risk; flag if suspicious</div>
+        <div style="margin-top:8px;font-size:22px;">🕵️</div>
+      </div>
+      <div class="card" style="border-top:3px solid var(--blue);text-align:center;">
+        <img data-ico="kinesis" style="width:30px;height:30px;"><div style="font-weight:700;color:var(--blue);font-size:13px;margin:6px 0 4px;">Analytics consumer</div>
+        <div style="font-size:11px;color:var(--muted);line-height:1.5;">append to lake · update trending index</div>
+        <div style="margin-top:8px;display:flex;justify-content:center;gap:8px;align-items:center;"><img data-ico="s3" style="width:24px;height:24px;"><img data-ico="opensearch" style="width:24px;height:24px;"></div>
+      </div>
+    </div>
+    <div class="note" style="margin-top:14px;max-width:900px;"><span>🔁</span><span>Consumers are independent &amp; replay-safe — checkout never blocks on fraud scoring; Kafka absorbs write spikes.</span></div>
+  </div>
+</div>
+
+<!-- ══════════ 17 · FLOW: AUTOSCALING (§4.3.4) ══════════ -->
+<div class="slide">
+  <div class="eyebrow">§4.3.4 · Transaction Flow</div>
+  <h2 style="margin-bottom:14px;">Autoscaling reaction to a traffic spike</h2>
+
+  <div style="display:flex;align-items:flex-start;width:100%;max-width:1000px;gap:0;margin-bottom:20px;">
+    <div class="node"><div class="node-box glow-y pulse"><div style="font-size:34px;">📈</div></div><div class="node-lbl">Traffic surge</div><div class="node-sub">RPS + latency ↑</div></div>
+    <div class="hconn"><span class="lbl">metrics</span><span class="td" style="background:var(--orange);box-shadow:0 0 7px var(--orange);"></span></div>
+    <div class="node"><div class="node-box"><img data-ico="cloudwatch"></div><div class="node-lbl">Prometheus</div><div class="node-sub">RPS/pod</div></div>
+    <div class="hconn"><span class="lbl">scale 3→20</span><span class="td" style="background:var(--blue);box-shadow:0 0 7px var(--blue);"></span></div>
+    <div class="node"><div class="node-box glow-b"><img data-ico="eks"></div><div class="node-lbl">HPA · Pods</div><div class="node-sub">Deployment</div></div>
+    <div class="hconn"><span class="lbl">Pending</span><span class="td" style="background:var(--green);box-shadow:0 0 7px var(--green);"></span></div>
+    <div class="node"><div class="node-box glow-g"><img data-ico="eks"></div><div class="node-lbl">Karpenter</div><div class="node-sub">Spot+OnDemand·3AZ</div></div>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:14px;max-width:760px;width:100%;margin-bottom:16px;justify-content:center;">
+    <div class="node"><div class="node-box sm glow-p"><img data-ico="msk"></div><div class="node-sub">Kafka lag</div></div>
+    <div class="hconn" style="max-width:160px;"><span class="lbl">lag rising</span><span class="td" style="background:var(--purple);box-shadow:0 0 7px var(--purple);"></span></div>
+    <div class="node"><div class="node-box sm"><img data-ico="kinesis"></div><div class="node-sub">KEDA → stream workers ↑</div></div>
+  </div>
+
+  <div class="warn anim" style="max-width:900px;"><span>🐢</span><span>Scale-<strong>down</strong> is slow (300s stabilization window) to avoid flapping; scale-<strong>up</strong> reacts fast (30s). Three independent layers each scale on the signal that predicts their load.</span></div>
+  <div class="info anim" style="max-width:900px;margin-top:12px;"><span>❄️</span><span><strong>Cold-start gap:</strong> new nodes take ~60–90s to join, so the first flash-sale wave can arrive before capacity exists. Mitigate with a <strong>pre-warmed / over-provisioned headroom buffer</strong> ahead of known events + brief edge queueing — not reactive scaling alone.</span></div>
+</div>
+
+<!-- ══════════ 18 · FLOW: DR FAILOVER (§4.3.5) ══════════ -->
+<div class="slide">
+  <div class="eyebrow">§4.3.5 · Transaction Flow</div>
+  <h2 style="margin-bottom:14px;">Region failover (DR)</h2>
+
+  <div style="display:flex;align-items:center;justify-content:center;gap:0;width:100%;max-width:1020px;margin-bottom:18px;" class="anim">
+    <!-- Route 53 arbiter -->
+    <div class="node"><div class="node-box glow-y pulse"><img data-ico="route53"></div><div class="node-lbl">Route 53</div><div class="node-sub">health check</div></div>
+
+    <!-- PRIMARY region box -->
+    <div style="border:1.5px solid rgba(248,113,113,.4);border-radius:14px;padding:12px 16px;margin-left:22px;background:rgba(248,113,113,.05);">
+      <div class="node-sub" style="color:var(--red);margin-bottom:8px;">us-east-1 · IMPAIRED ✗</div>
+      <div style="display:flex;gap:10px;">
+        <div class="node"><div class="node-box sm" style="opacity:.5;"><img data-ico="eks"></div><div class="node-sub">EKS</div></div>
+        <div class="node"><div class="node-box sm" style="opacity:.5;"><img data-ico="aurora"></div><div class="node-sub">Aurora writer</div></div>
+      </div>
+    </div>
+
+    <!-- failover arrow -->
+    <div class="hconn" style="max-width:150px;margin:0 18px;"><span class="lbl">DNS failover</span><span class="td" style="background:var(--green);box-shadow:0 0 7px var(--green);"></span></div>
+
+    <!-- DR region box -->
+    <div style="border:1.5px solid rgba(74,222,128,.45);border-radius:14px;padding:12px 16px;background:rgba(74,222,128,.06);">
+      <div class="node-sub" style="color:var(--green);margin-bottom:8px;">us-west-2 · PROMOTED ✓</div>
+      <div style="display:flex;gap:10px;">
+        <div class="node"><div class="node-box sm glow-g"><img data-ico="eks"></div><div class="node-sub">EKS → full</div></div>
+        <div class="node"><div class="node-box sm glow-g"><img data-ico="aurora"></div><div class="node-sub">Aurora → writer</div></div>
+        <div class="node"><div class="node-box sm glow-g"><img data-ico="msk"></div><div class="node-sub">MSK DR → backbone</div></div>
+        <div class="node"><div class="node-box sm"><img data-ico="s3"></div><div class="node-sub">S3 CRR</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="info anim" style="max-width:900px;margin-bottom:14px;"><span>🔁</span><span><strong>Aurora Global DB</strong> promotes the replica to writer, and the <strong>MSK DR cluster</strong> (fed by Replicator/MM2) resumes as the event backbone. Route 53 flips traffic (assume 60s TTL); Karpenter scales DR EKS to full.</span></div>
+  <div class="cols-2 anim" style="max-width:620px;">
+    <div class="mcard"><div class="mval green" style="font-size:2rem;">&lt; 1 min</div><div class="mlbl">RPO under normal lag · worst case = replication lag at failure</div></div>
+    <div class="mcard"><div class="mval blue" style="font-size:2rem;">&lt; 15 min</div><div class="mlbl">RTO target · validated quarterly (game-day)</div></div>
+  </div>
+</div>
+
+<!-- ══════════ 19 · RISKS (§4.4) ══════════ -->
+<div class="slide scroll">
+  <div class="eyebrow">§4.4 · Risk &amp; Dependencies</div>
+  <h2>What could go wrong — and the mitigation</h2>
+  <div style="width:100%;max-width:960px;">
+    <table class="dt">
+      <thead><tr><th>Risk / Dependency</th><th>Impact</th><th>Mitigation</th></tr></thead>
+      <tbody>
+        <tr><td>Payment provider outage</td><td>Checkout can't complete</td><td>Circuit breaker + retry; queue <code>payment_pending</code>; secondary provider (future)</td></tr>
+        <tr><td>Aurora writer failover</td><td>Brief write unavailability &lt;30s</td><td>Multi-AZ auto-failover; app retry+backoff; RDS Proxy</td></tr>
+        <tr><td>Kafka backpressure at spike</td><td>Delayed inventory/analytics</td><td>KEDA scales on lag; local outbox; tiered storage</td></tr>
+        <tr><td>Cognito lock-in</td><td>Migration cost</td><td>Trust standard OIDC/JWKS only → swap to Keycloak</td></tr>
+        <tr><td>CloudFront config AWS-specific</td><td>Re-platform effort</td><td>Isolated in Terraform; maps to Cloud CDN / Front Door</td></tr>
+        <tr><td>Inventory oversell (flash sale)</td><td>Sell stock we don't have</td><td>Atomic Redis reserve (<code>DECR</code>, reject if negative); Aurora reconciled async; reconcile job re-seeds counters</td></tr>
+        <tr><td><strong>Money charged, no order created</strong></td><td>Highest-severity customer harm</td><td>Compensating txn: auto-void/refund + release reservation (§4.3.1b)</td></tr>
+        <tr><td><strong>Kafka / MSK has no DR</strong></td><td>Failover with no event backbone</td><td>Cross-region MSK Replicator / MirrorMaker 2; fallback = rebuild from Aurora</td></tr>
+        <tr><td><strong>Cache stampede</strong> on hot products</td><td>Thundering herd hits Aurora</td><td>Jittered TTLs + single-flight (request-coalescing) refresh</td></tr>
+        <tr><td><strong>Autoscaling cold-start</strong> (~60–90s)</td><td>First spike wave before capacity</td><td>Pre-warmed / over-provisioned headroom + brief edge queueing</td></tr>
+        <tr><td><strong>Poison message</strong> blocks a consumer</td><td>Stalled projection / lag</td><td>Dead-letter queue + alert; skip-with-retry; replay after fix</td></tr>
+        <tr><td><strong>Right-to-be-forgotten</strong> (PII)</td><td>Legal / compliance exposure</td><td>Crypto-shredding / tombstones / bounded retention across Kafka·S3·OpenSearch</td></tr>
+        <tr><td>DR never tested</td><td>False confidence</td><td>Quarterly game-day drills; DR runbook; auto-verify</td></tr>
+        <tr><td>Duplicated domain models</td><td>Schema drift</td><td>Schema registry (Avro/Protobuf); no shared DB</td></tr>
+        <tr><td>Secrets sprawl</td><td>Security exposure</td><td>Secrets Manager + KMS + IRSA; rotation enabled</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════ 20 · PLANNING (§5) ══════════ -->
+<div class="slide">
+  <div class="eyebrow">§5 · Planning</div>
+  <h2>Milestone-based delivery</h2>
+  <div style="display:flex;flex-direction:column;gap:12px;width:100%;max-width:880px;" class="anim">
+    <div class="card" style="border-left:4px solid var(--green);display:flex;gap:16px;align-items:center;"><span class="tag tg" style="flex-shrink:0;">M1</span><div><strong style="font-size:13.5px;">Core platform</strong><div style="font-size:12px;color:var(--muted);margin-top:3px;">EKS, multi-AZ data, 5 core services, CDN, Cognito, MSK, observability, warm-standby DR</div></div></div>
+    <div class="card" style="border-left:4px solid var(--blue);display:flex;gap:16px;align-items:center;"><span class="tag tb" style="flex-shrink:0;">M2</span><div><strong style="font-size:13.5px;">Resilience &amp; delivery</strong><div style="font-size:12px;color:var(--muted);margin-top:3px;">Service mesh (mTLS), GitOps, progressive delivery, chaos engineering</div></div></div>
+    <div class="card" style="border-left:4px solid var(--purple);display:flex;gap:16px;align-items:center;"><span class="tag tp" style="flex-shrink:0;">M3</span><div><strong style="font-size:13.5px;">Multi-region active-active</strong><div style="font-size:12px;color:var(--muted);margin-top:3px;">Active-active writes, geo-routing, global data strategy</div></div></div>
+    <div class="card" style="border-left:4px solid var(--orange);display:flex;gap:16px;align-items:center;"><span class="tag to" style="flex-shrink:0;">M4</span><div><strong style="font-size:13.5px;">Data &amp; ML</strong><div style="font-size:12px;color:var(--muted);margin-top:3px;">Lakehouse, real-time OLAP, predictive autoscaling, personalization</div></div></div>
+    <div class="info"><span>📋</span><span>Divide into AIs &amp; Stories once committed in the sprint plan.</span></div>
+  </div>
+</div>
+
+<!-- ══════════ 21 · TEST PLAN (§6) ══════════ -->
+<div class="slide scroll">
+  <div class="eyebrow">§6 · Test Plan</div>
+  <h2>How we validate — owner: QA + service teams</h2>
+  <div class="cols-2 anim" style="max-width:1000px;align-items:start;">
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <div class="card" style="border-left:4px solid var(--green);"><strong style="color:var(--green);font-size:13px;">✅ Positive</strong><div style="font-size:12px;color:var(--muted);margin-top:5px;line-height:1.55;">browse → search → add-to-cart → checkout → confirmation; login (email, social, MFA); catalog CRUD</div></div>
+      <div class="card" style="border-left:4px solid var(--red);"><strong style="color:var(--red);font-size:13px;">❌ Negative</strong><div style="font-size:12px;color:var(--muted);margin-top:5px;line-height:1.55;">payment declined, invalid/expired JWT, out-of-stock at checkout, malformed input (schema), rate-limit exceeded</div></div>
+      <div class="card" style="border-left:4px solid var(--orange);"><strong style="color:var(--orange);font-size:13px;">⚡ Performance / load</strong><div style="font-size:12px;color:var(--muted);margin-top:5px;line-height:1.55;">flash-sale sim (10–50×); soak test; verify HPA/Karpenter/KEDA scale up &amp; down; p95/p99 SLO validation</div></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <div class="card" style="border-left:4px solid var(--blue);"><strong style="color:var(--blue);font-size:13px;">🔗 Integration</strong><div style="font-size:12px;color:var(--muted);margin-top:5px;line-height:1.55;">payment sandbox, Cognito/IdP federation, Kafka consumer end-to-end (event → projections)</div></div>
+      <div class="card" style="border-left:4px solid var(--purple);"><strong style="color:var(--purple);font-size:13px;">🛡️ Resilience / recovery</strong><div style="font-size:12px;color:var(--muted);margin-top:5px;line-height:1.55;">AZ-loss drill, Aurora failover, region-failover game-day (RPO&lt;1min / RTO&lt;15min), chaos fault injection</div></div>
+      <div class="card" style="border-left:4px solid var(--yellow);"><strong style="color:var(--yellow);font-size:13px;">🔐 Security</strong><div style="font-size:12px;color:var(--muted);margin-top:5px;line-height:1.55;">authz boundary tests, secrets access, WAF rule validation, pen-test of the checkout path</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ 22 · POST-DEPLOY + DOCS (§7–8) ══════════ -->
+<div class="slide">
+  <div class="eyebrow">§7–8 · Post-deployment &amp; Documentation</div>
+  <h2>After go-live</h2>
+  <div class="cols-2 anim" style="max-width:960px;align-items:start;">
+    <div class="card" style="border-left:4px solid var(--green);"><strong style="color:var(--green);font-size:13.5px;">§7 · Post-deployment</strong><div style="font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.6;">Record escaped bugs, incidents, and post-mortems here after go-live for future learning. <em>(TBD)</em></div></div>
+    <div class="card" style="border-left:4px solid var(--blue);"><strong style="color:var(--blue);font-size:13.5px;">§8 · Videos &amp; Documentation</strong><div style="font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.6;">Companion: <code>README.md</code> (summary) · PRD / architect requirements <em>(TBD)</em> · design-review recordings → DevOps SharePoint <em>(TBD)</em></div></div>
+  </div>
+  <div class="warn anim" style="max-width:960px;margin-top:16px;"><span>🔍</span><span><strong>Documented-vs-actual:</strong> this is target-state design — no running code yet. When implementation begins, every claim (retries, idempotent consumers, transactional writes, cache invalidation) must be re-verified against source and drift flagged back.</span></div>
+</div>
+
+<!-- ══════════ 23 · SUMMARY ══════════ -->
+<div class="slide divider">
+  <div class="sec-num">✓</div>
+  <div style="position:relative;z-index:5;text-align:center;">
+    <div class="eyebrow">Summary</div>
+    <h1 style="font-size:clamp(2rem,4.5vw,3.8rem);">Portable by design.<br><span class="accent">Resilient by default.</span></h1>
+    <p style="color:var(--muted);max-width:640px;margin:16px auto 0;font-size:1.05rem;line-height:1.7;">
+      Containerized microservices on Kubernetes, a multi-AZ managed data layer, and a Kafka event backbone —
+      multi-AZ for HA, warm-standby for DR, auto-scaled at three layers, observable end-to-end, and anchored on open standards.
+    </p>
+    <div style="margin-top:26px;display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">
+      <span class="tag tg">Multi-AZ HA</span><span class="tag tb">Warm-standby DR</span><span class="tag tp">3-layer autoscale</span>
+      <span class="tag to">OIDC auth</span><span class="tag ty">OTel observability</span><span class="tag tg">No lock-in</span>
+    </div>
+    <div style="margin-top:30px;display:flex;gap:14px;justify-content:center;flex-wrap:wrap;font-size:13px;">
+      <a href="./ARCHITECTURE.md" style="color:var(--blue);text-decoration:none;border:1px solid var(--border);padding:9px 16px;border-radius:9px;">📄 Full HLD (ARCHITECTURE.md)</a>
+      <a href="./README.md" style="color:var(--muted);text-decoration:none;border:1px solid var(--border);padding:9px 16px;border-radius:9px;">Summary README</a>
+    </div>
+  </div>
+</div>
+
+</div><!-- /deck -->
+
+<div class="nav">
+  <button onclick="prev()">↑</button>
+  <span class="nav-ctr" id="ctr">1 / 23</span>
+  <button onclick="next()">↓</button>
+</div>
+
+<script>
+const slides = document.querySelectorAll('.slide');
+let cur=0, exID=null;
+const TOTAL=slides.length;
+function goTo(n){
+  if(n<0||n>=TOTAL)return;
+  if(exID!==null)slides[exID].classList.remove('exit');
+  slides[cur].classList.remove('active'); slides[cur].classList.add('exit'); exID=cur;
+  setTimeout(()=>{if(exID!==null){slides[exID].classList.remove('exit');exID=null;}},450);
+  cur=n; slides[cur].classList.add('active');
+  slides[cur].scrollTop=0;
+  document.getElementById('ctr').textContent=`${cur+1} / ${TOTAL}`;
+  document.getElementById('pbar').style.width=`${((cur+1)/TOTAL)*100}%`;
+}
+function next(){goTo(cur+1);} function prev(){goTo(cur-1);}
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();next();}
+  if(e.key==='ArrowLeft'){e.preventDefault();prev();}
+  if(e.key==='f'||e.key==='F'){ if(!document.fullscreenElement)document.documentElement.requestFullscreen(); else document.exitFullscreen(); }
+});
+document.getElementById('ctr').textContent=`1 / ${TOTAL}`;
+document.getElementById('pbar').style.width=`${(1/TOTAL)*100}%`;
+</script>
+</body>
+</html>

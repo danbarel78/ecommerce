@@ -1,0 +1,19 @@
+# Reusable steps: install uv and sync the frozen environment.
+parameters:
+  - name: pythonVersion
+    type: string
+    default: "3.12"
+
+steps:
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: ${{ parameters.pythonVersion }}
+    displayName: "Use Python ${{ parameters.pythonVersion }}"
+
+  - script: |
+      curl -LsSf https://astral.sh/uv/install.sh | sh
+      echo "##vso[task.prependpath]$HOME/.local/bin"
+    displayName: "Install uv"
+
+  - script: uv sync --all-extras --frozen
+    displayName: "uv sync (frozen)"

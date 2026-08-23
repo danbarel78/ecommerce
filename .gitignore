@@ -1,0 +1,33 @@
+# --- Python ---
+**/.venv/
+**/venv/
+**/__pycache__/
+*.py[cod]
+**/*.egg-info/
+**/.eggs/
+**/build/
+**/dist/
+
+# Test / type / coverage caches
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+**/.pyright/
+.coverage
+coverage.xml
+htmlcov/
+
+# Local env / secrets
+.env
+*.env
+!.env.example
+
+# --- Terraform ---
+**/.terraform/
+**/.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+crash.log
+*.tfvars
+!*.tfvars.example
+*.tfplan

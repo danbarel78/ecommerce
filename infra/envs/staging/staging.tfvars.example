@@ -1,0 +1,12 @@
+# Copy to staging.tfvars and fill with real values (staging.tfvars is gitignored).
+# All entries below REQUIRE REAL VALUES for a real deployment.
+
+region = "us-east-1"
+azs    = ["us-east-1a", "us-east-1b", "us-east-1c"]
+owner  = "platform-team"
+
+acm_certificate_arn = "arn:aws:acm:us-east-1:111122223333:certificate/REPLACE-ME"
+
+eks_public_access_cidrs = ["203.0.113.0/24"]
+
+budget_notification_emails = ["finops@example.com"]

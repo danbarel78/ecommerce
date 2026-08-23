@@ -1,0 +1,44 @@
+# PR validation — pre-commit, unit tests, and build verification.
+# Runs on every pull request targeting main.
+trigger: none
+
+pr:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  PYTHON_VERSION: "3.12"
+
+stages:
+  - stage: Validate
+    displayName: "Lint, type-check, test"
+    jobs:
+      - job: quality
+        displayName: "Quality gate"
+        steps:
+          - template: templates/setup-uv.yml
+            parameters:
+              pythonVersion: $(PYTHON_VERSION)
+
+          - script: uv run pre-commit run --all-files
+            displayName: "pre-commit (all files)"
+
+          - template: templates/quality.yml
+
+      - job: build_verification
+        displayName: "Build verification"
+        dependsOn: quality
+        steps:
+          - template: templates/setup-uv.yml
+            parameters:
+              pythonVersion: $(PYTHON_VERSION)
+
+          - script: uv build
+            displayName: "Build wheel"
+
+          - script: docker build -t product-service:pr-$(Build.BuildId) .
+            displayName: "Build container image"

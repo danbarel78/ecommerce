@@ -1,0 +1,54 @@
+# Build & publish — version determination, build, and Artifactory/registry publish.
+# Runs on merges to main. Version = base_version.json {major.minor} + Build.BuildId patch.
+trigger:
+  branches:
+    include:
+      - main
+
+pr: none
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  PYTHON_VERSION: "3.12"
+
+stages:
+  - stage: Version
+    displayName: "Determine version"
+    jobs:
+      - job: version
+        steps:
+          - script: |
+              MAJOR=$(python -c "import json;print(json.load(open('base_version.json'))['major'])")
+              MINOR=$(python -c "import json;print(json.load(open('base_version.json'))['minor'])")
+              VERSION="${MAJOR}.${MINOR}.$(Build.BuildId)"
+              echo "Resolved version: ${VERSION}"
+              echo "##vso[task.setvariable variable=packageVersion;isOutput=true]${VERSION}"
+            name: setVersion
+            displayName: "Compute SemVer from base_version.json + BuildId"
+
+  - stage: BuildPublish
+    displayName: "Build & publish"
+    dependsOn: Version
+    variables:
+      packageVersion: $[ stageDependencies.Version.version.outputs['setVersion.packageVersion'] ]
+    jobs:
+      - job: publish
+        steps:
+          - template: templates/setup-uv.yml
+            parameters:
+              pythonVersion: $(PYTHON_VERSION)
+
+          - template: templates/quality.yml
+
+          - script: uv build
+            displayName: "Build wheel $(packageVersion)"
+
+          # REQUIRES REAL VALUE — configure the registry/Artifactory service connection
+          # and credentials in the Azure DevOps project before enabling publish.
+          - script: |
+              echo "Publishing product-service $(packageVersion) to the container registry"
+              docker build -t product-service:$(packageVersion) .
+              # docker push <registry>/product-service:$(packageVersion)
+            displayName: "Build & push image (configure registry)"
