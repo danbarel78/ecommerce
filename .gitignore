@@ -31,3 +31,10 @@ crash.log
 *.tfvars
 !*.tfvars.example
 *.tfplan
+
+# --- claude md files ---
+**/.claude/
+ARCHITECTURE.md
+claude.md
+IMPLEMENTATION-PLAN.md
+
