@@ -10,12 +10,12 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any
+from typing import Any 
 
 import httpx
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jose import jwt
+from jose import jwt   
 from jose.exceptions import JWTError
 
 from product_service.config import Settings, get_settings
