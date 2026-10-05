@@ -10,7 +10,7 @@ Endpoints (ARCHITECTURE.md §4.2 catalog):
 
 Auth = JWT Bearer verified against Cognito JWKS. Rate limiting = slowapi per IP.
 """
-
+# for testing purposes only. i will merge changes 
 from __future__ import annotations
 
 import logging
